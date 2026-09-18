@@ -83,6 +83,32 @@ for the complete, current list — summarized here:
   context, decision, and the honest costs of the choice, not just its
   benefits.
 
+## Branching strategy
+
+Two long-lived branches, git-flow-lite:
+
+- **`develop`** is the integration branch. All day-to-day work — feature
+  branches, fixes, chores — targets `develop` via PR. This is what CI
+  runs against on every push (see `.github/workflows/ci.yml`), so
+  `develop` should stay green; it's where things get exercised together
+  before anyone calls them done.
+- **`main`** is production. It only moves when `develop` merges into it.
+  That merge *is* the release — it's the point at which whatever's on
+  `develop` becomes "what's live." A push to `main` also runs a
+  `deploy-placeholder` CI job that builds both services' Docker images
+  to prove they still build, but does **not** push or deploy anywhere —
+  no hosting target has been chosen for this project yet. Wiring up a
+  real deploy means picking a host (Fly.io, Railway, a VPS, etc.),
+  pushing images to a registry, adding that host's credentials as repo
+  secrets, and replacing the placeholder build steps with real push +
+  deploy steps.
+
+Practically: branch feature work off `develop`, open the PR against
+`develop`, and treat "merge `develop` → `main`" as its own deliberate
+release action (its own PR, or a fast-forward once `develop` is in a
+known-good state) rather than something that happens as a side effect of
+finishing a feature.
+
 ## Commit messages
 
 Plain, present-tense, and explain *why* when the *what* isn't
