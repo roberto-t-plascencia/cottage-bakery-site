@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getOrderById } from "@/lib/repositories/orders";
-import { formatCents } from "@/lib/cart";
+import { formatCents, formatDateOnly } from "@/lib/cart";
 import { bakeryConfig } from "@/lib/config";
 
 export const metadata = { title: "Order received" };
@@ -10,7 +10,7 @@ export default async function OrderConfirmationPage({
 }: PageProps<"/order/confirmation/[id]">) {
   const { id } = await params;
 
-  const order = getOrderById(id);
+  const order = await getOrderById(id);
 
   if (!order) {
     notFound();
@@ -52,7 +52,7 @@ export default async function OrderConfirmationPage({
           </div>
           <div className="flex justify-between">
             <dt className="text-black/60 dark:text-white/60">Requested date</dt>
-            <dd>{new Date(order.requestedDate).toDateString()}</dd>
+            <dd>{formatDateOnly(order.requestedDate)}</dd>
           </div>
           <div className="flex justify-between">
             <dt className="text-black/60 dark:text-white/60">Status</dt>

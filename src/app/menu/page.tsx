@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 // The API route (/api/orders) exists where it earns its keep: a client
 // mutation from the checkout form.
 export default async function MenuPage() {
-  const products = listActiveProducts();
+  const products = await listActiveProducts();
 
   const byCategory = products.reduce<Record<string, typeof products>>(
     (acc, product) => {

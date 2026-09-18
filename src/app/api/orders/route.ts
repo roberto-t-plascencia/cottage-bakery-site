@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { findProductsByIds } from "@/lib/repositories/products";
 import { createOrder } from "@/lib/repositories/orders";
 import { validateOrder, type FulfillmentMethod } from "@/lib/orders";
+import { parseDateOnly } from "@/lib/cart";
 
 type OrderRequestBody = {
   customerName: string;
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   // arbitrary prices; this is the one line standing between "checkout form"
   // and "anyone can order a $0.01 wedding cake."
   const productIds = body.items.map((i) => i.productId);
-  const products = findProductsByIds(productIds);
+  const products = await findProductsByIds(productIds);
   const productById = new Map(products.map((p) => [p.id, p]));
 
   const missing = productIds.filter((id) => !productById.has(id));
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     };
   });
 
-  const requestedDate = new Date(body.requestedDate);
+  const requestedDate = parseDateOnly(body.requestedDate ?? "");
   if (Number.isNaN(requestedDate.getTime())) {
     return NextResponse.json(
       { errors: ["Requested date is invalid."] },
@@ -83,13 +84,20 @@ export async function POST(request: Request) {
     0
   );
 
-  const order = createOrder({
+  const order = await createOrder({
     customerName: body.customerName,
     customerEmail: body.customerEmail,
     customerPhone: body.customerPhone,
     fulfillmentMethod: body.fulfillmentMethod,
     fulfillmentAddress: body.fulfillmentAddress || null,
-    requestedDate: requestedDate.toISOString(),
+    // Pass the client's original "YYYY-MM-DD" string straight through
+    // (already validated as parseable above via parseDateOnly) rather
+    // than re-deriving it from the `requestedDate` Date object — that
+    // Date is in local time, and re-serializing a local Date with
+    // toISOString() converts to UTC first, which is exactly the
+    // off-by-one-day trap parseDateOnly exists to avoid (see its comment
+    // in src/lib/cart.ts).
+    requestedDate: body.requestedDate,
     notes: body.notes || null,
     subtotalCents,
     items: cartLines.map((line) => ({

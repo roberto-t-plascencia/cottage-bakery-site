@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { formatCents } from "@/lib/cart";
+import { formatCents, formatDateOnly } from "@/lib/cart";
 
 type OrderStatus = "PENDING" | "CONFIRMED" | "READY" | "COMPLETED" | "CANCELLED";
 
@@ -78,7 +78,7 @@ export function AdminOrderRow({ order }: { order: AdminOrderRowData }) {
           </p>
         )}
         <p className="text-black/60 dark:text-white/60">
-          Ready: {new Date(order.requestedDate).toDateString()}
+          Ready: {formatDateOnly(order.requestedDate)}
         </p>
         {order.notes && <p className="mt-1 italic">&ldquo;{order.notes}&rdquo;</p>}
       </td>

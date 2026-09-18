@@ -36,9 +36,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# local sqlite database (never commit real order/customer data)
-/data/
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts

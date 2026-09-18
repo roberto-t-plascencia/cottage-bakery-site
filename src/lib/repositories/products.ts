@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
-import { db } from "@/lib/db";
+import "server-only";
+import { supabase } from "@/lib/supabase";
 import type { NewProduct, Product } from "@/lib/types";
 
 type ProductRow = {
@@ -11,7 +11,7 @@ type ProductRow = {
   category: string;
   image_url: string | null;
   allergens: string;
-  is_active: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -26,79 +26,68 @@ function rowToProduct(row: ProductRow): Product {
     category: row.category,
     imageUrl: row.image_url,
     allergens: row.allergens,
-    isActive: row.is_active === 1,
+    isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-export function listActiveProducts(): Product[] {
-  const rows = db
-    .prepare(
-      `SELECT * FROM products WHERE is_active = 1 ORDER BY category ASC, name ASC`
-    )
-    .all() as ProductRow[];
-  return rows.map(rowToProduct);
+export async function listActiveProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_active", true)
+    .order("category", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(`listActiveProducts: ${error.message}`);
+  return (data as ProductRow[]).map(rowToProduct);
 }
 
-export function findProductsByIds(ids: string[]): Product[] {
+export async function findProductsByIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
-  const placeholders = ids.map(() => "?").join(", ");
-  const rows = db
-    .prepare(
-      `SELECT * FROM products WHERE id IN (${placeholders}) AND is_active = 1`
-    )
-    .all(...ids) as ProductRow[];
-  return rows.map(rowToProduct);
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .in("id", ids)
+    .eq("is_active", true);
+
+  if (error) throw new Error(`findProductsByIds: ${error.message}`);
+  return (data as ProductRow[]).map(rowToProduct);
 }
 
-export function getProductById(id: string): Product | null {
-  const row = db.prepare(`SELECT * FROM products WHERE id = ?`).get(id) as
-    | ProductRow
-    | undefined;
-  return row ? rowToProduct(row) : null;
+export async function getProductById(id: string): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(`getProductById: ${error.message}`);
+  return data ? rowToProduct(data as ProductRow) : null;
 }
 
 /** Insert-or-update by slug — used by db/seed.ts, safe to re-run. */
-export function upsertProductBySlug(product: NewProduct): Product {
-  const existing = db
-    .prepare(`SELECT * FROM products WHERE slug = ?`)
-    .get(product.slug) as ProductRow | undefined;
+export async function upsertProductBySlug(product: NewProduct): Promise<Product> {
+  const { data, error } = await supabase
+    .from("products")
+    .upsert(
+      {
+        slug: product.slug,
+        name: product.name,
+        description: product.description,
+        price_cents: product.priceCents,
+        category: product.category,
+        image_url: product.imageUrl,
+        allergens: product.allergens,
+        is_active: product.isActive,
+      },
+      { onConflict: "slug" }
+    )
+    .select()
+    .single();
 
-  if (existing) {
-    db.prepare(
-      `UPDATE products
-       SET name = ?, description = ?, price_cents = ?, category = ?,
-           image_url = ?, allergens = ?, is_active = ?,
-           updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-       WHERE id = ?`
-    ).run(
-      product.name,
-      product.description,
-      product.priceCents,
-      product.category,
-      product.imageUrl,
-      product.allergens,
-      product.isActive ? 1 : 0,
-      existing.id
-    );
-    return getProductById(existing.id)!;
-  }
-
-  const id = randomUUID();
-  db.prepare(
-    `INSERT INTO products (id, slug, name, description, price_cents, category, image_url, allergens, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    id,
-    product.slug,
-    product.name,
-    product.description,
-    product.priceCents,
-    product.category,
-    product.imageUrl,
-    product.allergens,
-    product.isActive ? 1 : 0
-  );
-  return getProductById(id)!;
+  if (error) throw new Error(`upsertProductBySlug: ${error.message}`);
+  return rowToProduct(data as ProductRow);
 }

@@ -13,14 +13,21 @@ FROM node:22-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# No DATABASE_PATH is set here on purpose: the build only needs to
-# typecheck and bundle the app, not talk to a real database. /menu and
-# /admin are marked `export const dynamic = "force-dynamic"` specifically
-# so they're never prerendered with build-time data (see the comment in
-# those files) — so the build touches no database at all. If a future
-# page did read the DB during static generation, this stage would create
-# a throwaway db file at the default path, which is harmless: the real
-# ./data volume is mounted fresh at runtime (see docker-compose.yml).
+
+# next build's "Collecting page data" step imports every route module
+# (including src/lib/supabase.ts, transitively) to inspect its exports —
+# even for routes marked force-dynamic that never execute at build time —
+# and that module builds its Supabase client eagerly at import time (see
+# its own comment for why). So the build needs *some* value here, but not
+# a real one: constructing a Supabase client never makes a network call,
+# it just needs a syntactically valid URL and a non-empty key. Real
+# credentials are supplied at container start (docker-compose.yml), not
+# baked into the image — these placeholders only get the build past that
+# import.
+ARG SUPABASE_URL=https://placeholder.supabase.co
+ARG SUPABASE_SERVICE_ROLE_KEY=placeholder-build-time-key
+ENV SUPABASE_URL=$SUPABASE_URL
+ENV SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY
 RUN npm run build
 
 # --- runner: the actual production image. Only what's needed to run the
@@ -33,20 +40,17 @@ RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
 # Next's standalone output already contains a minimal node_modules with
-# only the production dependencies actually used at runtime.
+# only the production dependencies actually used at runtime. There's no
+# local database file to seed or mount — Supabase is an external service,
+# reached over the network with the SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
+# supplied at container start (see docker-compose.yml).
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# schema.sql is read from disk at startup (see src/lib/db.ts) — the
-# standalone output doesn't include it since it's not a JS import.
-COPY --from=builder /app/db/schema.sql ./db/schema.sql
-
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
-ENV DATABASE_PATH=/app/data/dev.db
 
 CMD ["node", "server.js"]

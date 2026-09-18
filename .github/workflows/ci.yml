@@ -14,8 +14,6 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # node:sqlite (this app's database layer — see
-          # docs/adr/0001-tech-stack.md) needs Node 22+.
           node-version: "22"
           cache: "npm"
 
@@ -30,16 +28,21 @@ jobs:
 
       - name: Unit tests
         run: npm test
+        # The unit suite (tests/unit/) never touches Supabase — it only
+        # exercises the pure business logic in src/lib/ (cart math, order
+        # validation, session signing). See docs/TESTING_STRATEGY.md.
 
       - name: Build
         run: npm run build
         env:
-          # `next build` doesn't execute the admin routes (API routes
-          # aren't invoked at build time, and /admin is force-dynamic —
-          # see its own comment), so these aren't strictly required for
-          # the build to succeed. They're set anyway to mirror the real
-          # runtime env and catch any future build-time usage early,
-          # rather than only discovering a missing-secret crash in
-          # production. See docs/adr/0003-admin-auth.md.
+          # `next build`'s page-data-collection step imports every route
+          # module — including src/lib/supabase.ts, which builds a
+          # Supabase client eagerly at import time — even for routes that
+          # never execute at build time (see the same comment in
+          # Dockerfile). Constructing that client makes no network call,
+          # so a syntactically valid placeholder gets the build past that
+          # import without needing a real Supabase project in CI.
+          SUPABASE_URL: https://ci-placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-key
           ADMIN_PASSWORD: ci-placeholder-not-a-real-password
           SESSION_SECRET: ci-placeholder-session-secret-32-chars-minimum

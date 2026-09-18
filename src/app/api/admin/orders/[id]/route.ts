@@ -41,7 +41,7 @@ export async function PATCH(
     );
   }
 
-  const order = updateOrderStatus(id, status);
+  const order = await updateOrderStatus(id, status);
   if (!order) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }

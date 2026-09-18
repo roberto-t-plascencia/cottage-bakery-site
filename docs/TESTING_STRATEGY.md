@@ -34,10 +34,12 @@ worth testing directly rather than only through the UI:
 - **The repository layer** (`src/lib/repositories/*.ts`) is exercised
   indirectly by manual end-to-end testing during development (seed → run
   the app → place an order → confirm it shows up correctly) rather than
-  automated tests against a real SQLite file. Worth adding — a
-  `beforeEach` that spins up a fresh `:memory:` database via
-  `DATABASE_PATH=":memory:"` and runs the repository functions against it
-  — before this schema grows past its current three tables.
+  automated tests against a real database. Supabase doesn't offer an
+  in-memory mode the way `node:sqlite` did in an earlier version of this
+  app (see ADR 0001), so the equivalent here is a dedicated test project
+  (or the Supabase CLI's local Postgres via `supabase start`) that CI
+  resets between runs — worth adding before this schema grows past its
+  current three tables.
 - **UI components** have no automated tests. For a marketing/ordering site
   this size, the higher-value check is "does it look right and work when
   I click through it," which doesn't need a component-testing framework

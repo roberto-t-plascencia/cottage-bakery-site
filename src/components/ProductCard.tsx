@@ -11,6 +11,7 @@ export type ProductCardData = {
   priceCents: number;
   category: string;
   allergens: string;
+  imageUrl?: string | null;
 };
 
 export function ProductCard({ product }: { product: ProductCardData }) {
@@ -38,6 +39,23 @@ export function ProductCard({ product }: { product: ProductCardData }) {
   return (
     <div className="flex flex-col justify-between rounded-2xl border border-black/10 p-6 dark:border-white/10">
       <div>
+        {product.imageUrl && (
+          // A plain <img>, not next/image: the image lives in a Supabase
+          // Storage bucket whose hostname includes this project's ref
+          // (SUPABASE_URL), which next/image's remotePatterns would need
+          // configured at build time. For a handful of product photos on
+          // a small menu, that's not worth the config surface — worth
+          // revisiting (a wildcard `*.supabase.co` remote pattern) if
+          // image-heavy pages make Next's optimization/lazy-loading
+          // worth it.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="mb-4 aspect-[4/3] w-full rounded-xl object-cover"
+            loading="lazy"
+          />
+        )}
         <div className="flex items-start justify-between gap-4">
           <h3 className="font-semibold">{product.name}</h3>
           <span className="whitespace-nowrap font-medium">

@@ -5,7 +5,10 @@ import {
   cartSubtotalCents,
   earliestReadyDate,
   formatCents,
+  formatDateOnly,
+  parseDateOnly,
   removeFromCart,
+  toDateInputValue,
   updateQuantity,
   MIN_LEAD_TIME_DAYS,
   type CartLine,
@@ -100,5 +103,38 @@ describe("earliestReadyDate", () => {
     const from = new Date(2026, 0, 1); // Jan 1, 2026, local midnight
     const result = earliestReadyDate(from);
     expect(result.getDate()).toBe(1 + MIN_LEAD_TIME_DAYS);
+  });
+});
+
+describe("toDateInputValue / parseDateOnly / formatDateOnly", () => {
+  it("round-trips a local date through the input-value string unchanged", () => {
+    const date = new Date(2026, 8, 21); // Sep 21, 2026, local midnight
+    const str = toDateInputValue(date);
+    expect(str).toBe("2026-09-21");
+    const parsed = parseDateOnly(str);
+    expect(parsed.getFullYear()).toBe(2026);
+    expect(parsed.getMonth()).toBe(8);
+    expect(parsed.getDate()).toBe(21);
+  });
+
+  it("does not shift the date for single-digit months/days", () => {
+    const date = new Date(2026, 0, 5); // Jan 5, 2026
+    expect(toDateInputValue(date)).toBe("2026-01-05");
+  });
+
+  it("parseDateOnly never rolls back a day (the toISOString trap)", () => {
+    // A naive `new Date("2026-09-21")` parses as UTC midnight, which in
+    // any negative-UTC-offset timezone becomes Sep 20 in local time —
+    // this is exactly the bug parseDateOnly exists to avoid. Whatever
+    // timezone this test runs in, parsing must never move the date
+    // backward from what was written.
+    const parsed = parseDateOnly("2026-09-21");
+    expect(parsed.getDate()).toBe(21);
+  });
+
+  it("formatDateOnly renders the same calendar date it was given", () => {
+    expect(formatDateOnly("2026-09-21")).toBe(
+      new Date(2026, 8, 21).toDateString()
+    );
   });
 });

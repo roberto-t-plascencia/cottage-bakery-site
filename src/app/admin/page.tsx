@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 // Reachable only via src/proxy.ts, which redirects unauthenticated requests
 // to /admin/login before this component ever renders.
 export default async function AdminOrdersPage() {
-  const orders = listOrders();
+  const orders = await listOrders();
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">

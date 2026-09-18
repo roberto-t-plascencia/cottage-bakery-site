@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/CartContext";
-import { cartSubtotalCents, earliestReadyDate, formatCents } from "@/lib/cart";
+import {
+  cartSubtotalCents,
+  earliestReadyDate,
+  formatCents,
+  toDateInputValue,
+} from "@/lib/cart";
 import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
 
 type FormState = {
@@ -15,10 +20,6 @@ type FormState = {
   requestedDate: string;
   notes: string;
 };
-
-function toDateInputValue(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
 
 export default function OrderPage() {
   const router = useRouter();

@@ -75,3 +75,50 @@ export function earliestReadyDate(from: Date = new Date()): Date {
   result.setDate(result.getDate() + MIN_LEAD_TIME_DAYS);
   return result;
 }
+
+/**
+ * Formats a Date as "YYYY-MM-DD" using its *local* calendar date — for
+ * populating a `<input type="date">`'s value/min attribute. Deliberately
+ * not `date.toISOString().slice(0, 10)`: toISOString converts to UTC
+ * first, which silently rolls back to the previous day for any negative
+ * UTC offset (e.g. US timezones) when the local time is past midnight but
+ * before the UTC offset catches up — the classic "date picker is off by
+ * one depending on what time of day it is" bug.
+ */
+export function toDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Formats a bare "YYYY-MM-DD" date-only string (as stored in Postgres'
+ * `date` column and returned by Supabase) for display. Deliberately not
+ * `new Date(isoDateOnly).toDateString()`: a date-only string is parsed as
+ * UTC midnight per spec, which — once rendered in a negative-UTC-offset
+ * local timezone — can display as the *previous* calendar day (e.g.
+ * "2026-09-21" showing as "Sun Sep 20" in Pacific time). Building the
+ * Date from explicit local year/month/day components sidesteps that.
+ */
+export function formatDateOnly(isoDateOnly: string): string {
+  return parseDateOnly(isoDateOnly).toDateString();
+}
+
+/**
+ * Parses a bare "YYYY-MM-DD" string (what `<input type="date">` sends,
+ * and what gets stored in Postgres' `date` column) into a Date at *local*
+ * midnight. Deliberately not `new Date(isoDateOnly)`: that parses as UTC
+ * midnight, and every lead-time comparison in `validateOrder`
+ * (src/lib/orders.ts) works in local time via `setHours(0, 0, 0, 0)` —
+ * feeding it a UTC-midnight Date silently shifts the requested date back
+ * a day for anyone west of UTC, which could reject a valid order as "too
+ * soon" (or accept one that's actually a day short of the lead time) with
+ * no visible cause. This is the single place that string becomes a Date,
+ * so every caller (the order API route, tests) should go through this
+ * rather than calling `new Date(...)` on it directly.
+ */
+export function parseDateOnly(isoDateOnly: string): Date {
+  const [year, month, day] = isoDateOnly.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}

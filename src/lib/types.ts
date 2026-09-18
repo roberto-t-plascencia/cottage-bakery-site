@@ -1,7 +1,7 @@
 /**
- * Hand-written domain types, standing in for what Prisma would normally
- * generate from schema.prisma. These must be kept in sync with
- * db/schema.sql by hand — the tradeoff documented in
+ * Hand-written domain types, standing in for what an ORM would normally
+ * generate from the schema. These must be kept in sync with
+ * supabase/migrations/0001_init.sql by hand — the tradeoff documented in
  * docs/adr/0001-tech-stack.md.
  */
 
