@@ -1,0 +1,14 @@
+# Code ownership / default reviewers.
+#
+# Today this is a single-maintainer repo, so this file doesn't change
+# review routing yet — it's here as the seam for when it does. Replace
+# @your-github-handle with the real handle before this matters, and add
+# more specific rules (e.g. a path per subsystem) once there's more than
+# one regular contributor. Most-specific-match-wins, same as .gitignore.
+
+* @your-github-handle
+
+# Business/legal logic changes are worth a closer look than average —
+# uncomment and point at a second reviewer once one exists.
+# /src/lib/orders.ts @your-github-handle
+# /docs/adr/ @your-github-handle

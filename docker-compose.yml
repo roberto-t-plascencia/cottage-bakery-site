@@ -1,0 +1,18 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in your shell or a .env file next to docker-compose.yml}
+      - SESSION_SECRET=${SESSION_SECRET:?Set SESSION_SECRET in your shell or a .env file next to docker-compose.yml}
+    volumes:
+      # Named volume, not a bind mount to ./data: the SQLite file needs to
+      # survive `docker compose down` / image rebuilds, but doesn't need
+      # to be visible on the host filesystem the way source-adjacent
+      # bind mounts usually are.
+      - bakery-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  bakery-data:

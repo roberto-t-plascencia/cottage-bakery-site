@@ -1,0 +1,272 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCart } from "@/lib/CartContext";
+import { cartSubtotalCents, earliestReadyDate, formatCents } from "@/lib/cart";
+import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
+
+type FormState = {
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  fulfillmentMethod: FulfillmentOptionId;
+  fulfillmentAddress: string;
+  requestedDate: string;
+  notes: string;
+};
+
+function toDateInputValue(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+export default function OrderPage() {
+  const router = useRouter();
+  const { cart, remove, setQuantity, clear } = useCart();
+  const minDate = useMemo(() => toDateInputValue(earliestReadyDate()), []);
+
+  const [form, setForm] = useState<FormState>({
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    fulfillmentMethod: "PICKUP",
+    fulfillmentAddress: "",
+    requestedDate: minDate,
+    notes: "",
+  });
+  const [errors, setErrors] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const subtotal = cartSubtotalCents(cart);
+  const needsAddress =
+    form.fulfillmentMethod === "LOCAL_DELIVERY" ||
+    form.fulfillmentMethod === "IN_STATE_SHIPPING";
+
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setErrors([]);
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          items: cart.map((line) => ({
+            productId: line.productId,
+            quantity: line.quantity,
+          })),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrors(data.errors ?? ["Something went wrong. Please try again."]);
+        setSubmitting(false);
+        return;
+      }
+
+      clear();
+      router.push(`/order/confirmation/${data.order.id}`);
+    } catch {
+      setErrors(["Network error — please check your connection and try again."]);
+      setSubmitting(false);
+    }
+  }
+
+  if (cart.length === 0) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
+        <h1 className="text-3xl font-bold tracking-tight">Your order is empty</h1>
+        <p className="mt-4 text-black/70 dark:text-white/70">
+          Add something from the{" "}
+          <a href="/menu" className="underline">
+            menu
+          </a>{" "}
+          to get started.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-6 py-16">
+      <h1 className="text-3xl font-bold tracking-tight">Your order</h1>
+
+      <ul className="mt-6 divide-y divide-black/10 dark:divide-white/10">
+        {cart.map((line) => (
+          <li key={line.productId} className="flex items-center gap-4 py-4">
+            <div className="flex-1">
+              <p className="font-medium">{line.name}</p>
+              <p className="text-sm text-black/60 dark:text-white/60">
+                {formatCents(line.unitPriceCents)} each
+              </p>
+            </div>
+            <input
+              type="number"
+              min={1}
+              value={line.quantity}
+              onChange={(e) =>
+                setQuantity(line.productId, Number(e.target.value))
+              }
+              className="w-16 rounded border border-black/15 px-2 py-1 text-center dark:border-white/20 dark:bg-transparent"
+            />
+            <span className="w-20 text-right font-medium">
+              {formatCents(line.unitPriceCents * line.quantity)}
+            </span>
+            <button
+              type="button"
+              onClick={() => remove(line.productId)}
+              className="text-sm text-black/50 hover:text-red-700 dark:text-white/50"
+              aria-label={`Remove ${line.name}`}
+            >
+              Remove
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-4 flex justify-between border-t border-black/10 pt-4 font-semibold dark:border-white/10">
+        <span>Subtotal</span>
+        <span>{formatCents(subtotal)}</span>
+      </div>
+      <p className="mt-1 text-xs text-black/50 dark:text-white/50">
+        Payment is arranged directly with {bakeryConfig.ownerName} (cash, Venmo,
+        or Zelle) — nothing is charged online.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-10 space-y-5">
+        <h2 className="text-lg font-semibold">Your details</h2>
+
+        {errors.length > 0 && (
+          <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            <ul className="list-disc pl-5">
+              {errors.map((err) => (
+                <li key={err}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <Field label="Name">
+          <input
+            required
+            type="text"
+            value={form.customerName}
+            onChange={(e) => updateField("customerName", e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field label="Email">
+          <input
+            required
+            type="email"
+            value={form.customerEmail}
+            onChange={(e) => updateField("customerEmail", e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field label="Phone">
+          <input
+            required
+            type="tel"
+            value={form.customerPhone}
+            onChange={(e) => updateField("customerPhone", e.target.value)}
+            className="input"
+          />
+        </Field>
+
+        <Field label="Fulfillment">
+          <select
+            value={form.fulfillmentMethod}
+            onChange={(e) =>
+              updateField(
+                "fulfillmentMethod",
+                e.target.value as FulfillmentOptionId
+              )
+            }
+            className="input"
+          >
+            {bakeryConfig.fulfillmentOptions.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-black/50 dark:text-white/50">
+            {
+              bakeryConfig.fulfillmentOptions.find(
+                (o) => o.id === form.fulfillmentMethod
+              )?.description
+            }
+          </p>
+        </Field>
+
+        {needsAddress && (
+          <Field
+            label={
+              form.fulfillmentMethod === "LOCAL_DELIVERY"
+                ? "Delivery address"
+                : "Shipping address (must be in California)"
+            }
+          >
+            <textarea
+              required
+              value={form.fulfillmentAddress}
+              onChange={(e) => updateField("fulfillmentAddress", e.target.value)}
+              className="input"
+              rows={2}
+            />
+          </Field>
+        )}
+
+        <Field label="Requested ready date">
+          <input
+            required
+            type="date"
+            min={minDate}
+            value={form.requestedDate}
+            onChange={(e) => updateField("requestedDate", e.target.value)}
+            className="input"
+          />
+          <p className="mt-1 text-xs text-black/50 dark:text-white/50">
+            Earliest available: {minDate}
+          </p>
+        </Field>
+
+        <Field label="Notes (optional)">
+          <textarea
+            value={form.notes}
+            onChange={(e) => updateField("notes", e.target.value)}
+            className="input"
+            rows={3}
+            placeholder="Allergies, cake message, delivery instructions, etc."
+          />
+        </Field>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-full bg-amber-700 px-6 py-3 font-medium text-white transition hover:bg-amber-800 disabled:opacity-50"
+        >
+          {submitting ? "Submitting…" : "Submit order request"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium">{label}</span>
+      {children}
+    </label>
+  );
+}

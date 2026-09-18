@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # node:sqlite (this app's database layer — see
+          # docs/adr/0001-tech-stack.md) needs Node 22+.
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # `next build` doesn't execute the admin routes (API routes
+          # aren't invoked at build time, and /admin is force-dynamic —
+          # see its own comment), so these aren't strictly required for
+          # the build to succeed. They're set anyway to mirror the real
+          # runtime env and catch any future build-time usage early,
+          # rather than only discovering a missing-secret crash in
+          # production. See docs/adr/0003-admin-auth.md.
+          ADMIN_PASSWORD: ci-placeholder-not-a-real-password
+          SESSION_SECRET: ci-placeholder-session-secret-32-chars-minimum
