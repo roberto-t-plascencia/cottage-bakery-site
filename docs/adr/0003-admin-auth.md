@@ -1,6 +1,12 @@
 # ADR 0003: Admin auth — one shared password, not a user system
 
-**Status:** Accepted
+**Status:** Accepted (the *mechanism* below — a signed session cookie
+`web/` both issued and verified — was superseded by
+[ADR 0004](0004-service-boundary.md): the split makes `api/` the actual
+authorization boundary, so it now issues and verifies a JWT, and `web/`
+only stores and forwards it. The *policy* this ADR argues for — one
+shared password, no user system, and the reasoning in "what would make
+this the wrong call" below — is unchanged and still the current design.)
 **Date:** 2026-09-18
 
 ## Context

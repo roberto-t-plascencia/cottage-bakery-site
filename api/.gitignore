@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+*.tsbuildinfo
+coverage
+
+# src/lib/api-schema.generated.ts is intentionally NOT ignored — it's
+# committed so `npm install && npm run build` works without a codegen
+# step, and so a PR that changes specs/openapi.yaml without regenerating
+# it shows up as a diff in review, not just a CI failure. `npm run
+# gen:types` regenerates it; CI re-generates and diffs to catch drift
+# (see .github/workflows/ci.yml and specs/ENGINEERING_RULES.md).

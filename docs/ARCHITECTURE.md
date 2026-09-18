@@ -1,7 +1,10 @@
 # Architecture
 
 One-page map of how this app is put together and why. For the reasoning
-behind specific decisions, see `docs/adr/`.
+behind specific decisions, see `docs/adr/` — especially
+[ADR 0004](adr/0004-service-boundary.md), which is the one that shaped
+everything below: two independently-deployable services (`web/`, `api/`)
+in one repo, not one Next.js app.
 
 ## Overview
 
@@ -12,108 +15,166 @@ behind specific decisions, see `docs/adr/`.
                         │   localStorage, via       │
                         │   useSyncExternalStore)    │
                         └───────────┬───────────────┘
-                                    │ HTTP
+                                    │ HTTP — same-origin only.
+                                    │ The browser never talks to api/.
                         ┌───────────▼───────────────┐
-                        │   Next.js App Router        │
+                        │   web/ — Next.js (BFF)       │
                         │                              │
-   read paths           │  Server Components           │  write paths
-   (/, /menu, /about,   │  read src/lib/repositories    │  (submit order,
-    /admin, confirm)    │  directly — no API hop        │   admin login,
+   read paths           │  Server Components read       │  write paths
+   (/, /menu, /about,   │  via apiClient.ts (an HTTP     │  (submit order,
+    /admin, confirm)    │  call to api/, not a DB call) │   admin login,
                         │                              │   status change)
-                        │  API routes                   │──┐
-                        │  (src/app/api/**/route.ts)     │  │ writes go through
-                        └───────────┬───────────────┘  │ the same repositories
-                                    │                       │ + server-side
-                        ┌───────────▼───────────────┐  │ validation
-                        │  src/lib/repositories/*.ts   │◄─┘
-                        │  (the only code that talks to  │
-                        │   Supabase)                    │
+                        │  API routes — thin proxies:    │──┐
+                        │  parse, forward to api/, relay │  │
+                        │  the response. No business      │  │
+                        │  logic lives here anymore.       │  │
+                        └───────────┬───────────────┘  │
+                                    │ HTTP, server-side only    │
+                                    │ (Authorization: Bearer     │
+                                    │  <JWT> on admin routes —   │
+                                    │  web/ never verifies it,   │
+                                    │  just forwards it)          │
+                        ┌───────────▼───────────────┐  │
+                        │   api/ — Express + TypeScript │◄─┘
+                        │                              │
+                        │  Route handlers (products,    │
+                        │  orders, admin) → validation   │
+                        │  (src/lib/orders.ts) → the     │
+                        │  repository layer               │
+                        │                              │
+                        │  src/lib/repositories/*.ts —   │
+                        │  the ONLY code anywhere in      │
+                        │  this system that talks to      │
+                        │  Supabase                        │
                         └───────────┬───────────────┘
-                                    │ supabase-js (service_role key,
-                                    │ server-only — see src/lib/supabase.ts)
+                                    │ supabase-js (service_role key —
+                                    │ only api/ ever holds this)
                         ┌───────────▼───────────────┐
                         │  Supabase                   │
                         │  Postgres (orders, products)  │
                         │  Storage (product photos)     │
                         └───────────────────────────┘
 
-        src/proxy.ts gates every /admin/* request before any of the
-        above runs, redirecting to /admin/login if there's no valid
-        session cookie (src/lib/auth.ts).
+        web/src/proxy.ts gates /admin/* optimistically (cookie present?)
+        before any of the above runs — it cannot verify the JWT itself
+        (only api/ holds JWT_SECRET). The real authorization check is
+        api/'s requireAdmin middleware on every admin route. See ADR 0004.
 ```
 
 ## Directory layout
 
 ```
-db/
-  seed.ts           Populates the menu from src/data/products.seed.ts
+specs/
+  openapi.yaml          Single source of truth for the web<->api HTTP
+                         contract. Both services generate TypeScript
+                         types from this (`npm run gen:types`).
+  ENGINEERING_RULES.md   Cross-service conventions — read this before
+                         touching either service.
 
-supabase/
-  migrations/        Hand-written Postgres SQL (schema, RLS, the
-                      create_order_with_items function) — see ADR 0001
-                      for why there's no ORM and no diff-based migration
-                      tool.
+web/
+  src/
+    app/                Next.js App Router — pages and thin API-proxy routes
+      api/               Route handlers: forward to api/, relay the response
+      admin/             Admin dashboard (server component) + login page
+      order/             Cart/checkout (client) + confirmation page (server)
+      menu/ about/ contact/   Marketing pages
+    components/          Shared UI (Header, Footer, ProductCard, admin widgets)
+    lib/
+      config.ts           Bakery business info (duplicated in api/ — see
+                           specs/ENGINEERING_RULES.md "Duplicated code")
+      cart.ts              Client cart math + date-only helpers, unit-tested
+      apiClient.ts          The only file that calls api/ over HTTP
+      auth.ts               Just the session cookie's name/TTL — no signing
+                           logic lives here anymore (see api/src/lib/auth.ts)
+      types.ts              Re-exports from the generated OpenAPI schema
+      api-schema.generated.ts   Generated — never hand-edit (see specs/)
+    proxy.ts             Optimistic route guard for /admin/*
 
-src/
-  app/              Next.js App Router — pages and API routes
-    api/             Route handlers: orders, admin login/logout, order status
-    admin/           Admin dashboard (server component) + login page
-    order/           Cart/checkout (client) + confirmation page (server)
-    menu/ about/ contact/   Marketing pages
-  components/        Shared UI (Header, Footer, ProductCard, admin widgets)
-  lib/
-    config.ts         Single source of truth for bakery business info
-    cart.ts            Pure cart math — no framework, no I/O, fully unit-tested
-    orders.ts          Server-side order validation (business + legal rules)
-    auth.ts            Admin password check + session cookie signing
-    supabase.ts         Server-only Supabase client (service_role key)
-    storage.ts          Product photo upload/URL helpers (Supabase Storage)
-    types.ts            Hand-written domain types (see ADR 0001)
-    repositories/       The only files that call supabase-js
-  proxy.ts           Route guard for /admin/*
+  tests/unit/            Vitest tests for the pure-logic modules that
+                         remain in web/ (cart math, date helpers)
 
-tests/unit/          Vitest tests for the pure-logic modules
-docs/                This file, plus docs/adr/ and docs/TESTING_STRATEGY.md
+api/
+  supabase/migrations/   Hand-written Postgres SQL (schema, RLS, the
+                         create_order_with_items function) — see ADR 0001
+                         for why there's no ORM and no diff-based migration
+                         tool.
+  db/seed.ts             Populates the menu from src/data/products.seed.ts
+  src/
+    index.ts             Process entrypoint (binds a port)
+    app.ts                Express app factory — separated from index.ts so
+                         route tests can import it without binding a port
+    routes/               products, orders, admin — HTTP layer only
+    middleware/requireAdmin.ts   The actual authorization check for
+                         admin routes (not web/src/proxy.ts — see above)
+    lib/
+      supabase.ts          The only Supabase client in the whole system
+      repositories/         The only code that queries Supabase
+      orders.ts             Business/legal order validation, unit-tested
+      auth.ts                Password check + JWT issuing/verification
+      storage.ts             Product photo upload/URL helpers
+      cart.ts, config.ts     Deliberately duplicated subset of web/'s
+                           copies — see specs/ENGINEERING_RULES.md
+      types.ts               Hand-written domain types (see ADR 0001)
+  tests/
+    unit/                 Same pure-logic testing as web/'s tests/unit/
+    routes/                Integration tests against the real Express
+                         app (supertest), repository layer mocked — new
+                         since the split, see specs/ENGINEERING_RULES.md
+
+docs/                    This file, docs/adr/, docs/TESTING_STRATEGY.md
 ```
 
 ## Key design choices, briefly
 
-- **Server Components read the database directly.** `/menu` and `/admin`
-  don't fetch their own API — they call the repository layer in the
-  render function. The API routes exist specifically for client-side
-  mutations (submitting an order, changing a status), where there's no
-  other way to get data from the browser to the server. Not every data
-  access needs to go through a REST layer; the REST layer earns its place
-  where a client actually needs to push a write.
-- **The repository layer is the only code that calls `supabase-js`.**
-  Every page and route calls `src/lib/repositories/{products,orders}.ts`,
-  never the Supabase client directly. That's the seam where the database
-  layer has already been swapped twice (see ADR 0001) without touching
-  any page or route beyond adding `await`.
-- **The Supabase client uses the `service_role` key, server-side only,**
-  guarded by the `server-only` package (`src/lib/supabase.ts`) so
-  importing it from client code is a build error. There's no direct
-  client-side Supabase access anywhere in this app — the browser only
-  ever talks to this app's own API routes. Row Level Security is enabled
-  on every table as defense-in-depth for a future client-side feature,
-  not something the current request flow depends on (see the migration
-  file's comment).
-- **Creating an order is one atomic Postgres function call**
-  (`create_order_with_items`), not two client-side inserts — see ADR 0001
+- **The browser only ever talks to `web/`.** `api/` is never reachable
+  from client-side code — not by accident (no CORS is configured, so a
+  browser request to `api/` would be blocked even if attempted) and not
+  by design (the BFF pattern: `web/` is the only client `api/` has to
+  think about, which is what lets `api/`'s auth model be "one bearer
+  token, checked once" instead of anything session-cookie-aware).
+- **`api/src/lib/repositories/*.ts` is the only code that calls
+  `supabase-js`,** same instinct as the pre-split app (see ADR 0001) —
+  now enforced by a process boundary, not just convention: `web/` has
+  no Supabase credentials to misuse even if a bug tried.
+- **`web/`'s own API routes are thin proxies now, not business logic.**
+  Compare `web/src/app/api/orders/route.ts` before and after this split
+  in git history — validation, price lookup, and the actual database
+  write all moved to `api/`. What's left in `web/` is "parse the
+  request, call `apiClient`, relay the response," which is exactly why
+  `specs/ENGINEERING_RULES.md`'s testing rule stops requiring tests for
+  these specific routes.
+- **`specs/openapi.yaml` is the contract, generated types are the
+  enforcement.** Pre-split, a mismatch between what a page expected and
+  what a repository function returned was a TypeScript compiler error,
+  instantly, everywhere. Post-split, `web/` and `api/` don't share a
+  compiler — so the spec plus `npm run gen:types` in both services plus
+  a CI job that fails on drift (`spec-drift` in
+  `.github/workflows/ci.yml`) is what replaces that guarantee. It's a
+  weaker guarantee (a human has to remember to update the spec) but the
+  closest practical substitute across a real service boundary.
+- **Creating an order is still one atomic Postgres function call**
+  (`create_order_with_items`, called from `api/`) — see ADR 0001
   chapter 3 for why PostgREST needed that instead of a hand-rolled
-  transaction.
-- **Business/legal rules live in `src/lib/orders.ts`, not in the API route
-  or the form component.** The checkout form does light client-side
-  validation for immediate feedback; `validateOrder` is the actual source
-  of truth, called server-side, and is pure enough to unit-test without a
-  server or a database.
-- **Money is always integer cents**, never floating-point dollars — avoids
-  an entire class of rounding bugs in totals.
+  transaction. Unchanged by the service split.
+- **Admin auth is JWT-based, issued and verified only by `api/`.**
+  `web/` stores the token as an opaque string in its own httpOnly
+  cookie and forwards it — see ADR 0004 for why this had to change
+  (not just move) once `api/` became the actual authorization boundary.
+- **Business/legal rules live in `api/src/lib/orders.ts`, not in a
+  route handler or a form component.** `web/`'s checkout form does
+  light client-side validation for immediate feedback; `validateOrder`
+  in `api/` is the actual source of truth — unchanged in substance from
+  the pre-split app, just relocated to the service that owns the data
+  it's protecting.
+- **Money is always integer cents**, never floating-point dollars —
+  avoids an entire class of rounding bugs in totals. Enforced by
+  convention on both sides now (see `specs/ENGINEERING_RULES.md`
+  "Money") rather than by a single shared `cart.ts`.
 - **Dates that are calendar dates, not instants** (`requestedDate`) are
   parsed and formatted through `parseDateOnly`/`formatDateOnly`/
-  `toDateInputValue` in `src/lib/cart.ts`, never `new Date(dateOnlyString)`
-  directly — see that file's comments for the off-by-one-day bug this
-  avoids across timezones.
-- **Two auth layers for `/admin`**: `src/proxy.ts` handles the UI
-  redirect, and each admin API route independently re-verifies the
-  session. Belt and suspenders, not redundancy — see ADR 0003.
+  `toDateInputValue`, defined in `web/src/lib/cart.ts` and mirrored
+  (the parsing subset) in `api/src/lib/cart.ts` — never
+  `new Date(dateOnlyString)` directly. See
+  `specs/ENGINEERING_RULES.md` "Date-only values" for the off-by-one-day
+  bug this avoids across timezones, and why it's one of the functions
+  this repo accepts duplicating rather than sharing a package for.

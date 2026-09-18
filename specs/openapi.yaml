@@ -1,0 +1,381 @@
+openapi: 3.1.0
+info:
+  title: Cottage Bakery API
+  version: "0.1.0"
+  description: |
+    The HTTP contract between `web/` (Next.js, the only client of this
+    API) and `api/` (Express, the only thing that talks to Supabase).
+
+    This file is the single source of truth for that contract — both
+    services generate TypeScript types from it (`npm run gen:types` in
+    each) rather than hand-writing request/response types twice. See
+    ../specs/ENGINEERING_RULES.md and ../docs/adr/0004-service-boundary.md
+    for why this exists at all: without a shared npm package between two
+    independently-deployable services (a deliberate choice — see the
+    ADR), this spec is what keeps the boundary honest instead of the two
+    sides quietly drifting apart.
+
+    Nothing in this file is reachable from a browser. `web/`'s own API
+    routes and Server Components call this API server-side and are the
+    only callers — see docs/ARCHITECTURE.md.
+servers:
+  - url: http://localhost:4000
+    description: Local dev
+paths:
+  /health:
+    get:
+      operationId: health
+      summary: Liveness check.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+
+  /products:
+    get:
+      operationId: listProducts
+      summary: Active menu items, ordered by category then name.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products]
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+
+  /orders:
+    post:
+      operationId: createOrder
+      summary: |
+        Submit an order request. Not a checkout — no payment is taken
+        here (see docs/adr/0002-order-fulfillment-model.md). Prices are
+        looked up server-side from `productId`s; the client-supplied
+        price, if any, is ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [order]
+                properties:
+                  order:
+                    $ref: "#/components/schemas/OrderWithItems"
+        "400":
+          $ref: "#/components/responses/Errors"
+    get:
+      operationId: listOrders
+      summary: All orders, newest first. Admin only.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orders]
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OrderWithItems"
+        "401":
+          $ref: "#/components/responses/Errors"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      summary: |
+        A single order, by id. Public — the order id itself (a uuid) is
+        the access control, same as the confirmation-page link a
+        customer gets after ordering. No customer accounts exist to
+        authenticate against.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [order]
+                properties:
+                  order:
+                    $ref: "#/components/schemas/OrderWithItems"
+        "404":
+          $ref: "#/components/responses/Errors"
+
+  /orders/{id}/status:
+    patch:
+      operationId: updateOrderStatus
+      summary: Change an order's status. Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: "#/components/schemas/OrderStatus"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [order]
+                properties:
+                  order:
+                    $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "401":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      summary: |
+        Exchange the shared admin password for a bearer token. This
+        service issues the token but never sets a cookie — it has no
+        concept of a browser, only of a bearer token. `web/` is the one
+        that turns this token into an httpOnly cookie (see
+        web/src/app/api/admin/login/route.ts).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token]
+                properties:
+                  token:
+                    type: string
+        "401":
+          $ref: "#/components/responses/Errors"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Issued by POST /admin/login. web/ forwards this as
+        `Authorization: Bearer <token>` on every admin request; it never
+        verifies the token's signature itself — only this service holds
+        JWT_SECRET. See docs/adr/0004-service-boundary.md.
+  parameters:
+    OrderId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Errors:
+      description: |
+        This API's one error envelope shape, used for every non-2xx
+        response — see specs/ENGINEERING_RULES.md "Error envelope."
+        Never `{ "error": "..." }` (singular) — that inconsistency
+        existed in the pre-split codebase and was deliberately fixed
+        when this spec was written, not carried forward.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items:
+            type: string
+
+    FulfillmentMethod:
+      type: string
+      enum: [PICKUP, LOCAL_DELIVERY, IN_STATE_SHIPPING]
+
+    OrderStatus:
+      type: string
+      enum: [PENDING, CONFIRMED, READY, COMPLETED, CANCELLED]
+
+    Product:
+      type: object
+      required:
+        [id, slug, name, description, priceCents, category, imageUrl, allergens, isActive, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        priceCents:
+          type: integer
+          description: Always integer cents — see specs/ENGINEERING_RULES.md "Money."
+        category:
+          type: string
+        imageUrl:
+          type: [string, "null"]
+        allergens:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderItemWithProduct:
+      type: object
+      required: [id, orderId, productId, quantity, unitPriceCents, product]
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        unitPriceCents:
+          type: integer
+          description: Snapshot of the product's price at order time — not a live reference. See supabase/migrations/0001_init.sql.
+        product:
+          $ref: "#/components/schemas/Product"
+
+    Order:
+      type: object
+      required:
+        [id, customerName, customerEmail, customerPhone, fulfillmentMethod, fulfillmentAddress, requestedDate, notes, status, subtotalCents, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerPhone:
+          type: string
+        fulfillmentMethod:
+          $ref: "#/components/schemas/FulfillmentMethod"
+        fulfillmentAddress:
+          type: [string, "null"]
+        requestedDate:
+          type: string
+          description: |
+            A bare "YYYY-MM-DD" date-only string, not a timestamp — see
+            specs/ENGINEERING_RULES.md "Date-only values." Never parse
+            this with `new Date(str)` on either side of the boundary.
+        notes:
+          type: [string, "null"]
+        status:
+          $ref: "#/components/schemas/OrderStatus"
+        subtotalCents:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderWithItems:
+      allOf:
+        - $ref: "#/components/schemas/Order"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/OrderItemWithProduct"
+
+    CreateOrderRequest:
+      type: object
+      required: [customerName, customerEmail, customerPhone, fulfillmentMethod, requestedDate, items]
+      properties:
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerPhone:
+          type: string
+        fulfillmentMethod:
+          $ref: "#/components/schemas/FulfillmentMethod"
+        fulfillmentAddress:
+          type: string
+        requestedDate:
+          type: string
+          description: "YYYY-MM-DD — see Order.requestedDate."
+        notes:
+          type: string
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productId, quantity]
+            properties:
+              productId:
+                type: string
+                format: uuid
+              quantity:
+                type: integer
+                minimum: 1

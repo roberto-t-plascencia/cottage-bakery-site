@@ -1,0 +1,37 @@
+/**
+ * Deliberately duplicated from web/src/lib/config.ts — same reasoning as
+ * cart.ts in this directory (see docs/adr/0004-service-boundary.md and
+ * specs/ENGINEERING_RULES.md "Duplicated code, on purpose"). This
+ * service only reads `shippableState` (the legal constraint
+ * `validateOrder` enforces); the rest is here so the two copies stay
+ * structurally identical and a future admin-facing endpoint (e.g.
+ * "email the customer using bakeryConfig.contactEmail") doesn't need to
+ * re-derive it.
+ */
+export const bakeryConfig = {
+  businessName: "Your Cottage Bakery",
+  tagline: "Small-batch bakes, made to order in a licensed home kitchen.",
+  ownerName: "Your Name",
+  city: "Your City",
+  zip: "00000",
+  county: "Your County",
+  registrationNumber: "CFO-XXXXXX",
+  contactEmail: "hello@example.com",
+  contactPhone: "(555) 555-5555",
+  instagramHandle: "@yourcottagebakery",
+  serviceCounty: "Your County",
+  // Class A CFOs may only ship/deliver directly to consumers within
+  // California. This drives delivery-address validation in ./orders.ts.
+  shippableState: "CA",
+  fulfillmentOptions: [
+    { id: "PICKUP", label: "Pickup", description: "Free pickup from the home kitchen, by appointment." },
+    { id: "LOCAL_DELIVERY", label: "Local delivery", description: "Delivered within the service county for a flat fee." },
+    {
+      id: "IN_STATE_SHIPPING",
+      label: "Shipping (within California only)",
+      description: "Shipped via USPS/UPS/FedEx to a California address. Cottage food law prohibits shipping out of state.",
+    },
+  ] as const,
+} as const;
+
+export type FulfillmentOptionId = (typeof bakeryConfig.fulfillmentOptions)[number]["id"];

@@ -3,6 +3,14 @@
 **Status:** Accepted (superseding an earlier decision in the same ADR — see below)
 **Date:** 2026-09-18 (updated same day: Prisma → node:sqlite → Supabase)
 
+> **Note (post-[ADR 0004](0004-service-boundary.md)):** this ADR
+> predates the split into `web/` and `api/`. Every `src/lib/...` and
+> `src/app/...` path below refers to where that code lived at the time —
+> the Supabase client, repositories, and storage helpers this ADR
+> describes now live under `api/src/lib/`, not `src/lib/`. The reasoning
+> here (why Supabase, why no ORM) is unchanged; only the file locations
+> moved.
+
 ## Context
 
 This is a small marketing + direct-order site for a single-operator Class A

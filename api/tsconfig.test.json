@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Test files use top-level await (to set env fixtures via beforeAll
+    // before dynamically importing the module under test — see
+    // tests/unit/auth.test.ts) which CommonJS can't represent. Tests are
+    // never compiled to dist/ or run with plain `node` — vitest runs them
+    // straight from .ts via its own esbuild transform — so this only
+    // needs to satisfy `tsc --noEmit` for typechecking, not produce
+    // runnable output. src/ itself still targets CommonJS (tsconfig.json)
+    // for the real `npm run build`.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

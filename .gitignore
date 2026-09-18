@@ -1,41 +1,21 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Repo-wide ignores only. Each service (web/, api/) has its own
+# .gitignore for its build output and dependencies — a single root-level
+# pattern like "/node_modules" only anchors to the repo root and would
+# silently fail to ignore web/node_modules or api/node_modules, which is
+# exactly the kind of thing that looks fine locally and then shows up as
+# a multi-hundred-megabyte accidental commit. See web/.gitignore and
+# api/.gitignore.
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
 .DS_Store
 *.pem
-
-# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Safety net only — nothing should ever run `npm install` from the repo
+# root (there's no root package.json). If this ever matches something,
+# that's a sign a command ran in the wrong directory, not a normal case.
+/node_modules
+/.next/

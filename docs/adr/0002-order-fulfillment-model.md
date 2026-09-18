@@ -3,6 +3,15 @@
 **Status:** Accepted
 **Date:** 2026-09-18
 
+> **Note (post-[ADR 0004](0004-service-boundary.md)):** the order
+> validation this ADR describes (`src/lib/orders.ts`,
+> `addressMentionsState`, the lead-time check) now lives in
+> `api/src/lib/orders.ts`; the route that used to be
+> `src/app/api/orders/route.ts` is now `api/src/routes/orders.ts`, with
+> `web/src/app/api/orders/route.ts` as a thin proxy in front of it. The
+> business/legal reasoning below — request-to-fulfill, not checkout, and
+> why — is unchanged; it just moved with the code that enforces it.
+
 ## Context
 
 California's Cottage Food Program lets a Class A Cottage Food Operation

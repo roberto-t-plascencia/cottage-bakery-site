@@ -10,5 +10,8 @@
 
 # Business/legal logic changes are worth a closer look than average —
 # uncomment and point at a second reviewer once one exists.
-# /src/lib/orders.ts @your-github-handle
+# /api/src/lib/orders.ts @your-github-handle
 # /docs/adr/ @your-github-handle
+
+# The web<->api contract — a change here affects both services at once.
+# /specs/ @your-github-handle

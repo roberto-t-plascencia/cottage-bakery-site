@@ -1,14 +1,28 @@
 services:
+  api:
+    build: ./api
+    ports:
+      - "4000:4000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL:?Set SUPABASE_URL (Project Settings -> API in your Supabase project)}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY (Project Settings -> API) -- never expose this to a browser}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in your shell or a .env file next to docker-compose.yml}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET (openssl rand -base64 32) in your shell or a .env file next to docker-compose.yml}
+      - PORT=4000
+    restart: unless-stopped
+    # No volume: Supabase (Postgres + Storage) is the persistence layer,
+    # not this container — see docs/adr/0001-tech-stack.md. This
+    # container is fully disposable.
+
   web:
-    build: .
+    build: ./web
     ports:
       - "3000:3000"
     environment:
-      - SUPABASE_URL=${SUPABASE_URL:?Set SUPABASE_URL (Project Settings -> API in your Supabase project)}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:?Set SUPABASE_SERVICE_ROLE_KEY (Project Settings -> API) -- server-side only, never expose this}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in your shell or a .env file next to docker-compose.yml}
-      - SESSION_SECRET=${SESSION_SECRET:?Set SESSION_SECRET in your shell or a .env file next to docker-compose.yml}
+      # The service name "api" resolves via Compose's internal DNS — web
+      # reaches api over the network Compose creates for this file, not
+      # via localhost (there is no localhost shared between containers).
+      - API_URL=http://api:4000
+    depends_on:
+      - api
     restart: unless-stopped
-    # No volume: Supabase (Postgres + Storage) is the persistence layer,
-    # not this container — see docs/adr/0001-tech-stack.md. The container
-    # itself is fully disposable.
