@@ -11,6 +11,8 @@ export type ProductCardData = {
   priceCents: number;
   category: string;
   allergens: string;
+  ingredients: string;
+  netWeight: string;
   imageUrl?: string | null;
 };
 
@@ -68,6 +70,16 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         {allergenList.length > 0 && (
           <p className="mt-3 text-xs uppercase tracking-wide text-black/50 dark:text-white/50">
             Contains: {allergenList.join(", ")}
+          </p>
+        )}
+        {product.ingredients && (
+          <p className="mt-2 text-xs text-black/50 dark:text-white/50">
+            Ingredients: {product.ingredients}
+          </p>
+        )}
+        {product.netWeight && (
+          <p className="mt-1 text-xs text-black/50 dark:text-white/50">
+            Net Wt. {product.netWeight}
           </p>
         )}
       </div>

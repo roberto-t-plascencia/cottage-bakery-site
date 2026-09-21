@@ -28,6 +28,9 @@ export type Product = {
   category: string;
   imageUrl: string | null;
   allergens: string;
+  // Cottage food label content — see api/supabase/migrations/0002_add_product_label_fields.sql.
+  ingredients: string;
+  netWeight: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

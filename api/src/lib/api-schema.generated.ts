@@ -145,6 +145,10 @@ export interface components {
             category: string;
             imageUrl: string | null;
             allergens: string;
+            /** @description Full ingredients statement, as required on a California cottage food product label. */
+            ingredients: string;
+            /** @description Net weight as printed on the label, e.g. "8 oz (226 g)" — a formatted display string, not a numeric quantity to compute with. */
+            netWeight: string;
             isActive: boolean;
             /** Format: date-time */
             createdAt: string;

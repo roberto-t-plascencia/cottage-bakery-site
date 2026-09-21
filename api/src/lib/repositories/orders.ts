@@ -16,6 +16,8 @@ type ProductRow = {
   category: string;
   image_url: string | null;
   allergens: string;
+  ingredients: string;
+  net_weight: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -72,6 +74,8 @@ function rowToProduct(row: ProductRow) {
     category: row.category,
     imageUrl: row.image_url,
     allergens: row.allergens,
+    ingredients: row.ingredients,
+    netWeight: row.net_weight,
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

@@ -9,17 +9,17 @@
  * re-derive it.
  */
 export const bakeryConfig = {
-  businessName: "Your Cottage Bakery",
+  businessName: "Mission Valley Home Bakers",
   tagline: "Small-batch bakes, made to order in a licensed home kitchen.",
-  ownerName: "Your Name",
-  city: "Your City",
-  zip: "00000",
-  county: "Your County",
-  registrationNumber: "CFO-XXXXXX",
+  ownerName: "Roberto Plascencia",
+  city: "San Diego",
+  zip: "92108",
+  county: "San Diego",
+  registrationNumber: "DEH2026-FCFO-002557",
   contactEmail: "hello@example.com",
   contactPhone: "(555) 555-5555",
   instagramHandle: "@yourcottagebakery",
-  serviceCounty: "Your County",
+  serviceCounty: "San Diego",
   // Class A CFOs may only ship/deliver directly to consumers within
   // California. This drives delivery-address validation in ./orders.ts.
   shippableState: "CA",

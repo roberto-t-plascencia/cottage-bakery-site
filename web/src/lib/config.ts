@@ -7,19 +7,19 @@
  * production app — one seam, not scattered magic strings.
  */
 export const bakeryConfig = {
-  businessName: "Your Cottage Bakery",
+  businessName: "Mission Valley Home Bakers",
   tagline: "Small-batch bakes, made to order in a licensed home kitchen.",
-  ownerName: "Your Name",
-  city: "Your City",
-  zip: "00000",
-  county: "Your County",
+  ownerName: "Roberto Plascencia",
+  city: "San Diego",
+  zip: "92108",
+  county: "San Diego",
   // California cottage food registration number issued by the county health
   // department. Required on every product label — see docs/adr/0002.
-  registrationNumber: "CFO-XXXXXX",
+  registrationNumber: "DEH2026-FCFO-002557",
   contactEmail: "hello@example.com",
   contactPhone: "(555) 555-5555",
   instagramHandle: "@yourcottagebakery",
-  serviceCounty: "Your County",
+  serviceCounty: "San Diego",
   // Class A CFOs may only ship/deliver directly to consumers within
   // California. This list drives delivery-address validation.
   shippableState: "CA",

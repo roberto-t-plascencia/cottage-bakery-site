@@ -10,6 +10,8 @@ type ProductRow = {
   category: string;
   image_url: string | null;
   allergens: string;
+  ingredients: string;
+  net_weight: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -25,6 +27,8 @@ function rowToProduct(row: ProductRow): Product {
     category: row.category,
     imageUrl: row.image_url,
     allergens: row.allergens,
+    ingredients: row.ingredients,
+    netWeight: row.net_weight,
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -80,6 +84,8 @@ export async function upsertProductBySlug(product: NewProduct): Promise<Product>
         category: product.category,
         image_url: product.imageUrl,
         allergens: product.allergens,
+        ingredients: product.ingredients,
+        net_weight: product.netWeight,
         is_active: product.isActive,
       },
       { onConflict: "slug" }
