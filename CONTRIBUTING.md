@@ -93,15 +93,18 @@ Two long-lived branches, git-flow-lite:
   `develop` should stay green; it's where things get exercised together
   before anyone calls them done.
 - **`main`** is production. It only moves when `develop` merges into it.
-  That merge *is* the release — it's the point at which whatever's on
-  `develop` becomes "what's live." A push to `main` also runs a
-  `deploy-placeholder` CI job that builds both services' Docker images
-  to prove they still build, but does **not** push or deploy anywhere —
-  no hosting target has been chosen for this project yet. Wiring up a
-  real deploy means picking a host (Fly.io, Railway, a VPS, etc.),
-  pushing images to a registry, adding that host's credentials as repo
-  secrets, and replacing the placeholder build steps with real push +
-  deploy steps.
+  That merge *is* the release. For `web/`, it's a real one: `web/` is
+  connected to Vercel (Root Directory `web`, Production Branch `main`),
+  so merging to `main` triggers an actual production deployment there,
+  and every push to `develop` gets its own Preview deployment with a
+  shareable URL — see [ADR 0005](docs/adr/0005-deployment-targets.md).
+  `api/` doesn't have a host yet, so for `api/` a push to `main` still
+  only runs the `deploy-placeholder` CI job, which builds its Docker
+  image to prove it still builds without pretending it's deployed
+  anywhere. Wiring up a real `api/` deploy means picking a host (Fly.io,
+  Railway, a VPS, etc.), pushing images to a registry, adding that
+  host's credentials as repo secrets, and replacing the placeholder
+  build step with a real push + deploy step.
 
 Practically: branch feature work off `develop`, open the PR against
 `develop`, and treat "merge `develop` → `main`" as its own deliberate

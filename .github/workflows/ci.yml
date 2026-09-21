@@ -123,7 +123,7 @@ jobs:
         # that's quietly stopped being true.
 
   deploy-placeholder:
-    name: main → "deploy" (placeholder — no real target wired up)
+    name: main → "deploy" (web/ is real via Vercel; api/ still a placeholder)
     needs: [web, api]
     # always() so this still runs (and explains itself) even when a push
     # to main didn't touch web/ or api/ and those jobs were skipped by
@@ -134,7 +134,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build web/ image (not pushed anywhere)
+      - name: Build web/ image (build-verification only — see below)
         uses: docker/build-push-action@v6
         with:
           context: web
@@ -150,14 +150,18 @@ jobs:
 
       - name: What this job is and isn't
         run: |
-          echo "## This is a placeholder, not a real deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "## web/ deploys for real; api/ is still a placeholder" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "This job proves both services' Docker images still build" >> "$GITHUB_STEP_SUMMARY"
-          echo "cleanly on main — it does NOT push an image to a registry" >> "$GITHUB_STEP_SUMMARY"
-          echo "or deploy anywhere. No hosting target has been chosen yet" >> "$GITHUB_STEP_SUMMARY"
-          echo "for this project (see CONTRIBUTING.md 'Branching strategy')." >> "$GITHUB_STEP_SUMMARY"
+          echo "web/ is connected to Vercel directly (Vercel's GitHub App," >> "$GITHUB_STEP_SUMMARY"
+          echo "not this workflow) — merging to main already triggers a real" >> "$GITHUB_STEP_SUMMARY"
+          echo "production deployment there. The web/ image build in this job" >> "$GITHUB_STEP_SUMMARY"
+          echo "is just an extra build-verification check (useful for" >> "$GITHUB_STEP_SUMMARY"
+          echo "docker-compose / a future non-Vercel host), not the deploy path." >> "$GITHUB_STEP_SUMMARY"
+          echo "See docs/adr/0005-deployment-targets.md." >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Wiring this up for real means: pick a host (Fly.io, Railway," >> "$GITHUB_STEP_SUMMARY"
-          echo "a VPS, etc.), push images to a registry, add the host's" >> "$GITHUB_STEP_SUMMARY"
-          echo "credentials as repo secrets, and replace 'push: false' above" >> "$GITHUB_STEP_SUMMARY"
-          echo "with the real push + deploy steps." >> "$GITHUB_STEP_SUMMARY"
+          echo "api/ has no hosting target yet, so its image here is NOT" >> "$GITHUB_STEP_SUMMARY"
+          echo "pushed or deployed anywhere. Wiring that up for real means:" >> "$GITHUB_STEP_SUMMARY"
+          echo "pick a host (Fly.io, Railway, a VPS, etc.), push images to a" >> "$GITHUB_STEP_SUMMARY"
+          echo "registry, add the host's credentials as repo secrets, and" >> "$GITHUB_STEP_SUMMARY"
+          echo "replace api/'s 'push: false' above with real push + deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "steps." >> "$GITHUB_STEP_SUMMARY"

@@ -136,6 +136,22 @@ Run from inside `web/` or `api/` — each service has its own
 Both services' `lint`, `typecheck`, `test`, and `build` run in CI on
 every push, path-filtered per service — see `.github/workflows/ci.yml`.
 
+## Deployment
+
+`web/` deploys automatically via Vercel — connected to this repo,
+Root Directory `web`, Production Branch `main`. Every push to `develop`
+(or any other branch) gets a Preview deployment; merging `develop` into
+`main` is what promotes to production. See
+[ADR 0005](docs/adr/0005-deployment-targets.md) for the full reasoning,
+including why `api/` isn't on Vercel too.
+
+`api/` doesn't have a production host yet — that's the honest current
+state, not an oversight. Until it does, a deployed `web/` can serve
+pages, but nothing that calls `api/` (products, orders, admin) has
+anywhere to go. `.github/workflows/ci.yml`'s `deploy-placeholder` job
+builds `api/`'s Docker image on every push to `main` to prove it still
+builds, without pretending it's actually deployed anywhere.
+
 ## Running with Docker
 
 See "Run both services with Docker Compose" above for the full command.
@@ -158,6 +174,7 @@ each service's `Dockerfile`.
   2. [Order model: request-to-fulfill, not online checkout](docs/adr/0002-order-fulfillment-model.md)
   3. [Admin auth: one shared password, not a user system](docs/adr/0003-admin-auth.md)
   4. [Service boundary: web/ and api/ as separate deployables, in one repo](docs/adr/0004-service-boundary.md)
+  5. [Deployment targets: web/ on Vercel, api/ still TBD](docs/adr/0005-deployment-targets.md)
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — local setup + PR expectations,
   written as if a second engineer were about to join
 
