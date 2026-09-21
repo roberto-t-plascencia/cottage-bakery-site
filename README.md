@@ -138,19 +138,24 @@ every push, path-filtered per service — see `.github/workflows/ci.yml`.
 
 ## Deployment
 
-`web/` deploys automatically via Vercel — connected to this repo,
-Root Directory `web`, Production Branch `main`. Every push to `develop`
-(or any other branch) gets a Preview deployment; merging `develop` into
-`main` is what promotes to production. See
+Both `web/` and `api/` deploy automatically via Vercel — each connected
+to this repo (Root Directory `web` / `api`, Production Branch `main`).
+Every push to `develop` (or any other branch) gets its own Preview
+deployment for both services; merging `develop` into `main` is what
+promotes both to production. `api/` runs as a Vercel serverless function
+(`api/api/index.ts`), wrapping the same `createApp()` that also backs
+local dev and Docker Compose — the app itself stays host-agnostic. See
 [ADR 0005](docs/adr/0005-deployment-targets.md) for the full reasoning,
-including why `api/` isn't on Vercel too.
+including why an Express service turned out to fit Vercel's serverless
+model fine, and the Hobby → Pro plan timing as the business starts
+taking real orders.
 
-`api/` doesn't have a production host yet — that's the honest current
-state, not an oversight. Until it does, a deployed `web/` can serve
-pages, but nothing that calls `api/` (products, orders, admin) has
-anywhere to go. `.github/workflows/ci.yml`'s `deploy-placeholder` job
-builds `api/`'s Docker image on every push to `main` to prove it still
-builds, without pretending it's actually deployed anywhere.
+`.github/workflows/ci.yml`'s `deploy-placeholder` job still runs on
+every push to `main`, but only as a build-verification check now — it
+proves both services' Docker images still build cleanly (useful for
+`docker-compose`, or as an escape hatch if either service ever needs a
+non-Vercel host later), without pretending it's the deploy path. Vercel's
+GitHub App is.
 
 ## Running with Docker
 

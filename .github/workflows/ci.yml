@@ -123,7 +123,7 @@ jobs:
         # that's quietly stopped being true.
 
   deploy-placeholder:
-    name: main → "deploy" (web/ is real via Vercel; api/ still a placeholder)
+    name: main → "deploy" (real for both — Vercel; this job is now verification-only)
     needs: [web, api]
     # always() so this still runs (and explains itself) even when a push
     # to main didn't touch web/ or api/ and those jobs were skipped by
@@ -141,7 +141,7 @@ jobs:
           push: false
           tags: cottage-bakery-web:${{ github.sha }}
 
-      - name: Build api/ image (not pushed anywhere)
+      - name: Build api/ image (build-verification only — see below)
         uses: docker/build-push-action@v6
         with:
           context: api
@@ -150,18 +150,12 @@ jobs:
 
       - name: What this job is and isn't
         run: |
-          echo "## web/ deploys for real; api/ is still a placeholder" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Both services deploy for real via Vercel" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "web/ is connected to Vercel directly (Vercel's GitHub App," >> "$GITHUB_STEP_SUMMARY"
-          echo "not this workflow) — merging to main already triggers a real" >> "$GITHUB_STEP_SUMMARY"
-          echo "production deployment there. The web/ image build in this job" >> "$GITHUB_STEP_SUMMARY"
-          echo "is just an extra build-verification check (useful for" >> "$GITHUB_STEP_SUMMARY"
-          echo "docker-compose / a future non-Vercel host), not the deploy path." >> "$GITHUB_STEP_SUMMARY"
-          echo "See docs/adr/0005-deployment-targets.md." >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "api/ has no hosting target yet, so its image here is NOT" >> "$GITHUB_STEP_SUMMARY"
-          echo "pushed or deployed anywhere. Wiring that up for real means:" >> "$GITHUB_STEP_SUMMARY"
-          echo "pick a host (Fly.io, Railway, a VPS, etc.), push images to a" >> "$GITHUB_STEP_SUMMARY"
-          echo "registry, add the host's credentials as repo secrets, and" >> "$GITHUB_STEP_SUMMARY"
-          echo "replace api/'s 'push: false' above with real push + deploy" >> "$GITHUB_STEP_SUMMARY"
-          echo "steps." >> "$GITHUB_STEP_SUMMARY"
+          echo "web/ and api/ are each connected to Vercel directly (Vercel's" >> "$GITHUB_STEP_SUMMARY"
+          echo "GitHub App, not this workflow) — merging to main already" >> "$GITHUB_STEP_SUMMARY"
+          echo "triggers a real production deployment for both. The Docker" >> "$GITHUB_STEP_SUMMARY"
+          echo "image builds in this job are now just build-verification" >> "$GITHUB_STEP_SUMMARY"
+          echo "checks (useful for docker-compose, or as an escape hatch if" >> "$GITHUB_STEP_SUMMARY"
+          echo "either service ever needs a non-Vercel host later) — neither" >> "$GITHUB_STEP_SUMMARY"
+          echo "image is pushed anywhere. See docs/adr/0005-deployment-targets.md." >> "$GITHUB_STEP_SUMMARY"

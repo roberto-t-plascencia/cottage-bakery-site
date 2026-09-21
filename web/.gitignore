@@ -48,3 +48,6 @@ next-env.d.ts
 
 # generated from ../specs/openapi.yaml — NOT ignored, see specs/ENGINEERING_RULES.md
 !src/lib/api-schema.generated.ts
+
+.vercel
+.env*
