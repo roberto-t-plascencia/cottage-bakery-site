@@ -17,7 +17,11 @@ info:
 
     Nothing in this file is reachable from a browser. `web/`'s own API
     routes and Server Components call this API server-side and are the
-    only callers — see docs/ARCHITECTURE.md.
+    only callers — see docs/ARCHITECTURE.md. One exception exists outside
+    this file's scope entirely: `POST /webhooks/paypal` is called by
+    PayPal's own servers, not by `web/`, so it's deliberately left out of
+    this web/-api/ contract — see
+    docs/adr/0006-online-payment-paypal.md and api/src/routes/webhooks.ts.
 servers:
   - url: http://localhost:4000
     description: Local dev
@@ -37,6 +41,27 @@ paths:
                 properties:
                   ok:
                     type: boolean
+
+  /config:
+    get:
+      operationId: getConfig
+      summary: |
+        Non-secret runtime config `web/` needs but doesn't hold itself —
+        currently just PayPal's Client ID (see
+        docs/adr/0006-online-payment-paypal.md for why it lives here
+        instead of being duplicated into web/'s own env).
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [paypalClientId]
+                properties:
+                  paypalClientId:
+                    type: [string, "null"]
+                    description: Null if PAYPAL_CLIENT_ID isn't configured in this environment.
 
   /products:
     get:
@@ -60,10 +85,14 @@ paths:
     post:
       operationId: createOrder
       summary: |
-        Submit an order request. Not a checkout — no payment is taken
-        here (see docs/adr/0002-order-fulfillment-model.md). Prices are
-        looked up server-side from `productId`s; the client-supplied
-        price, if any, is ignored.
+        Submit an order request. Prices are looked up server-side from
+        `productId`s; the client-supplied price, if any, is ignored. An
+        order exists in `PENDING` / `UNPAID` regardless of
+        `paymentMethod` — for a `PAYPAL` order, payment happens in a
+        separate step after this call (see `POST /orders/{id}/paypal-order`
+        and `POST /orders/{id}/capture-payment`), not as part of creating
+        the order. See docs/adr/0002-order-fulfillment-model.md and
+        docs/adr/0006-online-payment-paypal.md.
       requestBody:
         required: true
         content:
@@ -164,6 +193,71 @@ paths:
         "404":
           $ref: "#/components/responses/Errors"
 
+  /orders/{id}/paypal-order:
+    post:
+      operationId: createPayPalOrderForOrder
+      summary: |
+        Starts a PayPal Checkout for an existing order — creates a
+        PayPal order sized to this order's own `subtotalCents` (never a
+        client-supplied amount) and returns PayPal's order id for the
+        PayPal JS SDK to use client-side. See
+        docs/adr/0006-online-payment-paypal.md.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [paypalOrderId]
+                properties:
+                  paypalOrderId:
+                    type: string
+        "400":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+
+  /orders/{id}/capture-payment:
+    post:
+      operationId: capturePaymentForOrder
+      summary: |
+        Captures a buyer-approved PayPal payment for this order,
+        server-side — never trusts a client-reported "payment succeeded."
+        On success, the order's `paymentStatus` becomes `PAID` and its
+        `status` becomes `CONFIRMED`. Idempotent: calling this again for
+        an order that's already `PAID` returns the same success response
+        rather than erroring. See docs/adr/0006-online-payment-paypal.md.
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paypalOrderId]
+              properties:
+                paypalOrderId:
+                  type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [order]
+                properties:
+                  order:
+                    $ref: "#/components/schemas/Order"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+
   /admin/login:
     post:
       operationId: adminLogin
@@ -246,6 +340,19 @@ components:
       type: string
       enum: [PENDING, CONFIRMED, READY, COMPLETED, CANCELLED]
 
+    PaymentMethod:
+      type: string
+      enum: [MANUAL, PAYPAL]
+      description: |
+        MANUAL = cash/Venmo/Zelle, settled directly with the baker at
+        pickup/delivery (the original, and still-default, model). PAYPAL
+        = paid online through PayPal Checkout. See
+        docs/adr/0006-online-payment-paypal.md.
+
+    PaymentStatus:
+      type: string
+      enum: [UNPAID, PAID]
+
     Product:
       type: object
       required:
@@ -308,7 +415,7 @@ components:
     Order:
       type: object
       required:
-        [id, customerName, customerEmail, customerPhone, fulfillmentMethod, fulfillmentAddress, requestedDate, notes, status, subtotalCents, createdAt, updatedAt]
+        [id, customerName, customerEmail, customerPhone, fulfillmentMethod, fulfillmentAddress, requestedDate, notes, status, subtotalCents, paymentMethod, paymentStatus, paypalOrderId, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -335,6 +442,13 @@ components:
           $ref: "#/components/schemas/OrderStatus"
         subtotalCents:
           type: integer
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        paymentStatus:
+          $ref: "#/components/schemas/PaymentStatus"
+        paypalOrderId:
+          type: [string, "null"]
+          description: Set once a PayPal Checkout has been started for this order (see POST /orders/{id}/paypal-order). Null for a MANUAL order, or a PAYPAL order for which checkout hasn't started yet.
         createdAt:
           type: string
           format: date-time
@@ -372,6 +486,9 @@ components:
           description: "YYYY-MM-DD — see Order.requestedDate."
         notes:
           type: string
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+          description: Omit for the default (MANUAL).
         items:
           type: array
           minItems: 1

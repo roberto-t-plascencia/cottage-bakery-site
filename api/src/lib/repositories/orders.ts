@@ -5,6 +5,7 @@ import type {
   OrderItemWithProduct,
   OrderStatus,
   OrderWithItems,
+  PaymentMethod,
 } from "../types";
 
 type ProductRow = {
@@ -34,6 +35,9 @@ type OrderRow = {
   notes: string | null;
   status: string;
   subtotal_cents: number;
+  payment_method: string;
+  payment_status: string;
+  paypal_order_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -82,16 +86,11 @@ function rowToProduct(row: ProductRow) {
   };
 }
 
-function rowToOrderWithItems(row: OrderWithItemsRow): OrderWithItems {
-  const items: OrderItemWithProduct[] = row.items.map((item) => ({
-    id: item.id,
-    orderId: item.order_id,
-    productId: item.product_id,
-    quantity: item.quantity,
-    unitPriceCents: item.unit_price_cents,
-    product: rowToProduct(item.product),
-  }));
-
+// Shared by every function below that reads a bare `orders` row (no
+// items) — factored out once payment fields joined updateOrderStatus's
+// and markOrderPaid's mappings, rather than duplicating the same nine
+// fields in three places.
+function rowToOrder(row: OrderRow): Order {
   return {
     id: row.id,
     customerName: row.customer_name,
@@ -103,10 +102,25 @@ function rowToOrderWithItems(row: OrderWithItemsRow): OrderWithItems {
     notes: row.notes,
     status: row.status as OrderStatus,
     subtotalCents: row.subtotal_cents,
+    paymentMethod: row.payment_method as Order["paymentMethod"],
+    paymentStatus: row.payment_status as Order["paymentStatus"],
+    paypalOrderId: row.paypal_order_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    items,
   };
+}
+
+function rowToOrderWithItems(row: OrderWithItemsRow): OrderWithItems {
+  const items: OrderItemWithProduct[] = row.items.map((item) => ({
+    id: item.id,
+    orderId: item.order_id,
+    productId: item.product_id,
+    quantity: item.quantity,
+    unitPriceCents: item.unit_price_cents,
+    product: rowToProduct(item.product),
+  }));
+
+  return { ...rowToOrder(row), items };
 }
 
 /**
@@ -115,7 +129,12 @@ function rowToOrderWithItems(row: OrderWithItemsRow): OrderWithItems {
  * supabase/migrations/0001_init.sql for why this has to be a database
  * function rather than two client-side inserts: PostgREST doesn't expose
  * ad-hoc multi-table transactions, and a half-written order is a corrupt
- * order, not a partial one).
+ * order, not a partial one). payment_method/payment_status aren't
+ * parameters here — they default to MANUAL/UNPAID at the column level
+ * (see supabase/migrations/0003_add_payment_fields.sql); a PayPal order
+ * is flipped to PAYPAL right after creation via setOrderPaymentMethod,
+ * rather than widening this RPC's signature for a value that's optional
+ * and only sometimes different from its default.
  */
 export async function createOrder(input: NewOrderInput): Promise<OrderWithItems> {
   const { data: orderId, error } = await supabase.rpc("create_order_with_items", {
@@ -157,6 +176,20 @@ export async function getOrderById(id: string): Promise<OrderWithItems | null> {
   return data ? rowToOrderWithItems(data as unknown as OrderWithItemsRow) : null;
 }
 
+// Looked up by webhooks (see routes/webhooks.ts), which only know
+// PayPal's own order id, not this service's order id — a bare `orders`
+// row is enough there, no need for the items join.
+export async function getOrderByPayPalOrderId(paypalOrderId: string): Promise<Order | null> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("paypal_order_id", paypalOrderId)
+    .maybeSingle();
+
+  if (error) throw new Error(`getOrderByPayPalOrderId: ${error.message}`);
+  return data ? rowToOrder(data as OrderRow) : null;
+}
+
 export async function listOrders(): Promise<OrderWithItems[]> {
   const { data, error } = await supabase
     .from("orders")
@@ -179,21 +212,44 @@ export async function updateOrderStatus(
     .maybeSingle();
 
   if (error) throw new Error(`updateOrderStatus: ${error.message}`);
-  if (!data) return null;
+  return data ? rowToOrder(data as OrderRow) : null;
+}
 
-  const row = data as OrderRow;
-  return {
-    id: row.id,
-    customerName: row.customer_name,
-    customerEmail: row.customer_email,
-    customerPhone: row.customer_phone,
-    fulfillmentMethod: row.fulfillment_method as Order["fulfillmentMethod"],
-    fulfillmentAddress: row.fulfillment_address,
-    requestedDate: row.requested_date,
-    notes: row.notes,
-    status: row.status as OrderStatus,
-    subtotalCents: row.subtotal_cents,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+// Set right after order creation when the buyer chose to pay by PayPal
+// (see routes/orders.ts's POST /) — see createOrder's comment for why
+// this is a separate call rather than a parameter on that RPC.
+export async function setOrderPaymentMethod(id: string, method: PaymentMethod): Promise<void> {
+  const { error } = await supabase.from("orders").update({ payment_method: method }).eq("id", id);
+  if (error) throw new Error(`setOrderPaymentMethod: ${error.message}`);
+}
+
+// Set as soon as a PayPal order is created for this order (before the
+// buyer has approved or paid anything) — see lib/paypal.ts's
+// createPayPalOrder and docs/adr/0006-online-payment-paypal.md.
+export async function setOrderPayPalOrderId(id: string, paypalOrderId: string): Promise<void> {
+  const { error } = await supabase
+    .from("orders")
+    .update({ paypal_order_id: paypalOrderId })
+    .eq("id", id);
+  if (error) throw new Error(`setOrderPayPalOrderId: ${error.message}`);
+}
+
+/**
+ * Marks an order paid and moves it to CONFIRMED in one update. Called
+ * from two places — the synchronous capture in routes/orders.ts's
+ * POST /:id/capture-payment, and the PAYMENT.CAPTURE.COMPLETED webhook
+ * handler in routes/webhooks.ts — and idempotent by nature (an UPDATE to
+ * the same values twice is harmless), since both paths can race for the
+ * same order.
+ */
+export async function markOrderPaid(id: string, paypalOrderId: string): Promise<Order | null> {
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ payment_status: "PAID", status: "CONFIRMED", paypal_order_id: paypalOrderId })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(`markOrderPaid: ${error.message}`);
+  return data ? rowToOrder(data as OrderRow) : null;
 }
