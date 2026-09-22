@@ -10,6 +10,9 @@ import {
   toDateInputValue,
 } from "@/lib/cart";
 import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
+import { PayPalCheckoutButton } from "@/components/PayPalCheckoutButton";
+
+type PaymentMethod = "MANUAL" | "PAYPAL";
 
 type FormState = {
   customerName: string;
@@ -19,6 +22,7 @@ type FormState = {
   fulfillmentAddress: string;
   requestedDate: string;
   notes: string;
+  paymentMethod: PaymentMethod;
 };
 
 export default function OrderPage() {
@@ -34,9 +38,18 @@ export default function OrderPage() {
     fulfillmentAddress: "",
     requestedDate: minDate,
     notes: "",
+    paymentMethod: "MANUAL",
   });
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Once a PAYPAL order has been created (PENDING, UNPAID), the form is
+  // replaced by the PayPal buttons — the order already exists at this
+  // point; only payment is still pending. The cart is deliberately kept
+  // until payment actually succeeds (onCaptured, below), so a buyer who
+  // backs out mid-payment hasn't lost their cart.
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
 
   const subtotal = cartSubtotalCents(cart);
   const needsAddress =
@@ -73,12 +86,50 @@ export default function OrderPage() {
         return;
       }
 
-      clear();
-      router.push(`/order/confirmation/${data.order.id}`);
+      if (form.paymentMethod === "MANUAL") {
+        clear();
+        router.push(`/order/confirmation/${data.order.id}`);
+        return;
+      }
+
+      // PAYPAL: the order exists now; show the PayPal buttons next and
+      // let PayPalCheckoutButton's onCaptured (below) take it from here.
+      const configRes = await fetch("/api/config");
+      const configData = await configRes.json();
+      if (!configRes.ok || !configData.paypalClientId) {
+        setErrors(["PayPal isn't configured right now. Please choose 'Pay at pickup' instead."]);
+        setSubmitting(false);
+        return;
+      }
+      setPaypalClientId(configData.paypalClientId);
+      setPendingOrderId(data.order.id);
+      setSubmitting(false);
     } catch {
       setErrors(["Network error — please check your connection and try again."]);
       setSubmitting(false);
     }
+  }
+
+  if (pendingOrderId && paypalClientId) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16">
+        <h1 className="text-3xl font-bold tracking-tight">Pay with PayPal</h1>
+        <p className="mt-4 text-black/70 dark:text-white/70">
+          Your order has been created. Complete payment below to confirm it —{" "}
+          {formatCents(subtotal)} total.
+        </p>
+        <div className="mt-8">
+          <PayPalCheckoutButton
+            paypalClientId={paypalClientId}
+            orderId={pendingOrderId}
+            onCaptured={() => {
+              clear();
+              router.push(`/order/confirmation/${pendingOrderId}`);
+            }}
+          />
+        </div>
+      </div>
+    );
   }
 
   if (cart.length === 0) {
@@ -137,10 +188,6 @@ export default function OrderPage() {
         <span>Subtotal</span>
         <span>{formatCents(subtotal)}</span>
       </div>
-      <p className="mt-1 text-xs text-black/50 dark:text-white/50">
-        Payment is arranged directly with {bakeryConfig.ownerName} (cash, Venmo,
-        or Zelle) — nothing is charged online.
-      </p>
 
       <form onSubmit={handleSubmit} className="mt-10 space-y-5">
         <h2 className="text-lg font-semibold">Your details</h2>
@@ -251,12 +298,53 @@ export default function OrderPage() {
           />
         </Field>
 
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium">Payment</legend>
+          <label className="flex items-start gap-2 py-1">
+            <input
+              type="radio"
+              name="paymentMethod"
+              checked={form.paymentMethod === "MANUAL"}
+              onChange={() => updateField("paymentMethod", "MANUAL")}
+              className="mt-1"
+            />
+            <span>
+              <span className="block font-medium">
+                Pay at pickup/delivery
+              </span>
+              <span className="block text-xs text-black/50 dark:text-white/50">
+                Cash, Venmo, or Zelle, arranged directly with {bakeryConfig.ownerName} — nothing
+                is charged now.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 py-1">
+            <input
+              type="radio"
+              name="paymentMethod"
+              checked={form.paymentMethod === "PAYPAL"}
+              onChange={() => updateField("paymentMethod", "PAYPAL")}
+              className="mt-1"
+            />
+            <span>
+              <span className="block font-medium">Pay now with card (PayPal)</span>
+              <span className="block text-xs text-black/50 dark:text-white/50">
+                Pay online by credit/debit card or PayPal — no PayPal account required.
+              </span>
+            </span>
+          </label>
+        </fieldset>
+
         <button
           type="submit"
           disabled={submitting}
           className="w-full rounded-full bg-amber-700 px-6 py-3 font-medium text-white transition hover:bg-amber-800 disabled:opacity-50"
         >
-          {submitting ? "Submitting…" : "Submit order request"}
+          {submitting
+            ? "Submitting…"
+            : form.paymentMethod === "PAYPAL"
+              ? "Continue to payment"
+              : "Submit order request"}
         </button>
       </form>
     </div>

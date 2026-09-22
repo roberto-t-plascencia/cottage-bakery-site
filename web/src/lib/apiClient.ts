@@ -95,6 +95,20 @@ export const apiClient = {
 
   adminLogin: (password: string) =>
     apiFetch<{ token: string }>("/admin/login", { method: "POST", body: { password } }),
+
+  getConfig: () => apiFetch<{ paypalClientId: string | null }>("/config"),
+
+  // See docs/adr/0006-online-payment-paypal.md. Both of these are called
+  // from web/'s own /api/orders/[id]/... route handlers (never directly
+  // from the browser), which is what PayPalCheckoutButton.tsx talks to.
+  createPayPalOrder: (orderId: string) =>
+    apiFetch<{ paypalOrderId: string }>(`/orders/${orderId}/paypal-order`, { method: "POST" }),
+
+  capturePayment: (orderId: string, paypalOrderId: string) =>
+    apiFetch<{ order: Order }>(`/orders/${orderId}/capture-payment`, {
+      method: "POST",
+      body: { paypalOrderId },
+    }).then((r) => r.order),
 };
 
 export type { FulfillmentMethod };

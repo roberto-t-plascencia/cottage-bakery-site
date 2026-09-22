@@ -21,6 +21,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Non-secret runtime config `web/` needs but doesn't hold itself —
+         *     currently just PayPal's Client ID (see
+         *     docs/adr/0006-online-payment-paypal.md for why it lives here
+         *     instead of being duplicated into web/'s own env).
+         */
+        get: operations["getConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products": {
         parameters: {
             query?: never;
@@ -49,10 +71,14 @@ export interface paths {
         get: operations["listOrders"];
         put?: never;
         /**
-         * Submit an order request. Not a checkout — no payment is taken
-         *     here (see docs/adr/0002-order-fulfillment-model.md). Prices are
-         *     looked up server-side from `productId`s; the client-supplied
-         *     price, if any, is ignored.
+         * Submit an order request. Prices are looked up server-side from
+         *     `productId`s; the client-supplied price, if any, is ignored. An
+         *     order exists in `PENDING` / `UNPAID` regardless of
+         *     `paymentMethod` — for a `PAYPAL` order, payment happens in a
+         *     separate step after this call (see `POST /orders/{id}/paypal-order`
+         *     and `POST /orders/{id}/capture-payment`), not as part of creating
+         *     the order. See docs/adr/0002-order-fulfillment-model.md and
+         *     docs/adr/0006-online-payment-paypal.md.
          */
         post: operations["createOrder"];
         delete?: never;
@@ -100,6 +126,53 @@ export interface paths {
         patch: operations["updateOrderStatus"];
         trace?: never;
     };
+    "/orders/{id}/paypal-order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Starts a PayPal Checkout for an existing order — creates a
+         *     PayPal order sized to this order's own `subtotalCents` (never a
+         *     client-supplied amount) and returns PayPal's order id for the
+         *     PayPal JS SDK to use client-side. See
+         *     docs/adr/0006-online-payment-paypal.md.
+         */
+        post: operations["createPayPalOrderForOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/{id}/capture-payment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Captures a buyer-approved PayPal payment for this order,
+         *     server-side — never trusts a client-reported "payment succeeded."
+         *     On success, the order's `paymentStatus` becomes `PAID` and its
+         *     `status` becomes `CONFIRMED`. Idempotent: calling this again for
+         *     an order that's already `PAID` returns the same success response
+         *     rather than erroring. See docs/adr/0006-online-payment-paypal.md.
+         */
+        post: operations["capturePaymentForOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/login": {
         parameters: {
             query?: never;
@@ -134,6 +207,16 @@ export interface components {
         FulfillmentMethod: "PICKUP" | "LOCAL_DELIVERY" | "IN_STATE_SHIPPING";
         /** @enum {string} */
         OrderStatus: "PENDING" | "CONFIRMED" | "READY" | "COMPLETED" | "CANCELLED";
+        /**
+         * @description MANUAL = cash/Venmo/Zelle, settled directly with the baker at
+         *     pickup/delivery (the original, and still-default, model). PAYPAL
+         *     = paid online through PayPal Checkout. See
+         *     docs/adr/0006-online-payment-paypal.md.
+         * @enum {string}
+         */
+        PaymentMethod: "MANUAL" | "PAYPAL";
+        /** @enum {string} */
+        PaymentStatus: "UNPAID" | "PAID";
         Product: {
             /** Format: uuid */
             id: string;
@@ -184,6 +267,10 @@ export interface components {
             notes: string | null;
             status: components["schemas"]["OrderStatus"];
             subtotalCents: number;
+            paymentMethod: components["schemas"]["PaymentMethod"];
+            paymentStatus: components["schemas"]["PaymentStatus"];
+            /** @description Set once a PayPal Checkout has been started for this order (see POST /orders/{id}/paypal-order). Null for a MANUAL order, or a PAYPAL order for which checkout hasn't started yet. */
+            paypalOrderId: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -201,6 +288,8 @@ export interface components {
             /** @description YYYY-MM-DD — see Order.requestedDate. */
             requestedDate: string;
             notes?: string;
+            /** @description Omit for the default (MANUAL). */
+            paymentMethod?: components["schemas"]["PaymentMethod"];
             items: {
                 /** Format: uuid */
                 productId: string;
@@ -251,6 +340,29 @@ export interface operations {
                 content: {
                     "application/json": {
                         ok: boolean;
+                    };
+                };
+            };
+        };
+    };
+    getConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Null if PAYPAL_CLIENT_ID isn't configured in this environment. */
+                        paypalClientId: string | null;
                     };
                 };
             };
@@ -383,6 +495,64 @@ export interface operations {
             };
             400: components["responses"]["Errors"];
             401: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
+        };
+    };
+    createPayPalOrderForOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        paypalOrderId: string;
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
+        };
+    };
+    capturePaymentForOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    paypalOrderId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        order: components["schemas"]["Order"];
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
             404: components["responses"]["Errors"];
         };
     };
