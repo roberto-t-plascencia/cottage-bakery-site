@@ -19,6 +19,11 @@ export type OrderStatus =
 
 export type FulfillmentMethod = "PICKUP" | "LOCAL_DELIVERY" | "IN_STATE_SHIPPING";
 
+// See supabase/migrations/0003_add_payment_fields.sql and
+// docs/adr/0006-online-payment-paypal.md.
+export type PaymentMethod = "MANUAL" | "PAYPAL";
+export type PaymentStatus = "UNPAID" | "PAID";
+
 export type Product = {
   id: string;
   slug: string;
@@ -59,6 +64,12 @@ export type Order = {
   notes: string | null;
   status: OrderStatus;
   subtotalCents: number;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  // Set once a PayPal Checkout has been started for this order (see
+  // api/src/lib/paypal.ts) — null for a MANUAL-payment order, or a
+  // PAYPAL order for which checkout hasn't been started yet.
+  paypalOrderId: string | null;
   createdAt: string;
   updatedAt: string;
 };

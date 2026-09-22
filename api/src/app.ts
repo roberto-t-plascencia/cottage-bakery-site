@@ -2,6 +2,8 @@ import express, { type ErrorRequestHandler } from "express";
 import { productsRouter } from "./routes/products";
 import { ordersRouter } from "./routes/orders";
 import { adminRouter } from "./routes/admin";
+import { configRouter } from "./routes/config";
+import { webhooksRouter } from "./routes/webhooks";
 
 /**
  * Separated from index.ts so route tests (tests/routes/*.test.ts) can
@@ -21,6 +23,8 @@ export function createApp() {
   app.use("/products", productsRouter);
   app.use("/orders", ordersRouter);
   app.use("/admin", adminRouter);
+  app.use("/config", configRouter);
+  app.use("/webhooks", webhooksRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ errors: ["Not found."] });

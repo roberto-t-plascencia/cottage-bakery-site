@@ -1,7 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
 import { findProductsByIds } from "../lib/repositories/products";
-import { createOrder, getOrderById, listOrders, updateOrderStatus } from "../lib/repositories/orders";
+import {
+  createOrder,
+  getOrderById,
+  listOrders,
+  markOrderPaid,
+  setOrderPayPalOrderId,
+  setOrderPaymentMethod,
+  updateOrderStatus,
+} from "../lib/repositories/orders";
+import { capturePayPalOrder, createPayPalOrder } from "../lib/paypal";
 import { validateOrder } from "../lib/orders";
 import { parseDateOnly } from "../lib/cart";
 import { requireAdmin } from "../middleware/requireAdmin";
@@ -35,6 +44,10 @@ const CreateOrderSchema = z.object({
   items: z
     .array(z.object({ productId: z.string(), quantity: z.number() }))
     .min(1, "Cart is empty."),
+  // Defaults to MANUAL (cash/Venmo/Zelle at pickup/delivery) when
+  // omitted — see docs/adr/0006-online-payment-paypal.md. Not passed to
+  // createOrder's RPC; see repositories/orders.ts's createOrder comment.
+  paymentMethod: z.enum(["MANUAL", "PAYPAL"]).optional(),
 });
 
 // POST /orders — public. The checkout form on web/ hits this indirectly,
@@ -119,6 +132,11 @@ ordersRouter.post("/", async (req, res) => {
     })),
   });
 
+  if (body.paymentMethod === "PAYPAL") {
+    await setOrderPaymentMethod(order.id, "PAYPAL");
+    order.paymentMethod = "PAYPAL";
+  }
+
   res.status(201).json({ order });
 });
 
@@ -159,4 +177,70 @@ ordersRouter.patch("/:id/status", requireAdmin, async (req, res) => {
     return;
   }
   res.json({ order });
+});
+
+// POST /orders/:id/paypal-order — public, same trust model as
+// GET /orders/:id (the uuid order id is the access control). Creates a
+// PayPal order sized to *this* order's own subtotal_cents — the amount
+// is never taken from the request, so a tampered client can't create a
+// PayPal order for less than what's actually owed. See
+// docs/adr/0006-online-payment-paypal.md.
+ordersRouter.post("/:id/paypal-order", async (req, res) => {
+  const order = await getOrderById(paramId(req.params.id));
+  if (!order) {
+    res.status(404).json({ errors: ["Order not found."] });
+    return;
+  }
+  if (order.paymentStatus === "PAID") {
+    res.status(400).json({ errors: ["This order has already been paid."] });
+    return;
+  }
+
+  const paypalOrderId = await createPayPalOrder(order.subtotalCents, order.id);
+  await setOrderPayPalOrderId(order.id, paypalOrderId);
+  res.json({ paypalOrderId });
+});
+
+const CapturePaymentSchema = z.object({
+  paypalOrderId: z.string(),
+});
+
+// POST /orders/:id/capture-payment — public, same trust model. This is
+// the synchronous, buyer-facing capture path (the browser is waiting on
+// it); routes/webhooks.ts's PAYMENT.CAPTURE.COMPLETED handler is a
+// reconciliation safety net alongside it, not a replacement for it — see
+// that file's comment and docs/adr/0006-online-payment-paypal.md for the
+// gap neither one covers.
+ordersRouter.post("/:id/capture-payment", async (req, res) => {
+  const parsed = CapturePaymentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ errors: ["paypalOrderId is required."] });
+    return;
+  }
+
+  const order = await getOrderById(paramId(req.params.id));
+  if (!order) {
+    res.status(404).json({ errors: ["Order not found."] });
+    return;
+  }
+  if (order.paypalOrderId !== parsed.data.paypalOrderId) {
+    res.status(400).json({ errors: ["This PayPal order does not match this order."] });
+    return;
+  }
+  if (order.paymentStatus === "PAID") {
+    // Idempotent: a retried request (e.g. a flaky connection right after
+    // the first one actually succeeded) gets the same success response,
+    // not a confusing error about an order that's already fine.
+    res.json({ order });
+    return;
+  }
+
+  const result = await capturePayPalOrder(parsed.data.paypalOrderId);
+  if (!result.captured) {
+    res.status(400).json({ errors: ["Payment was not completed. Please try again."] });
+    return;
+  }
+
+  const updated = await markOrderPaid(order.id, result.paypalOrderId);
+  res.json({ order: updated });
 });

@@ -1,11 +1,13 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
+import type { PaymentStatus } from "../../src/lib/types";
 
 // Route tests exercise HTTP behavior (status codes, the error envelope,
 // auth enforcement) against the real Express app — but never a real
-// database. The repository layer is mocked here the same way a unit
-// test mocks any I/O boundary; what's under test is routing/validation/
-// auth wiring, which is exactly what a route test should cover per
+// database, and never a real PayPal API call. The repository layer and
+// the PayPal client are both mocked here the same way a unit test mocks
+// any I/O boundary; what's under test is routing/validation/auth wiring,
+// which is exactly what a route test should cover per
 // specs/ENGINEERING_RULES.md "Testing bar."
 const products = [
   {
@@ -36,6 +38,9 @@ const fakeOrder = {
   notes: null,
   status: "PENDING" as const,
   subtotalCents: 2200,
+  paymentMethod: "MANUAL" as const,
+  paymentStatus: "UNPAID" as PaymentStatus,
+  paypalOrderId: null as string | null,
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
   items: [
@@ -57,17 +62,45 @@ vi.mock("../../src/lib/repositories/products", () => ({
   listActiveProducts: vi.fn(async () => products),
 }));
 
+const setOrderPaymentMethod = vi.fn(async (_id: string, _method: string) => {});
+const setOrderPayPalOrderId = vi.fn(async (_id: string, _paypalOrderId: string) => {});
+const markOrderPaid = vi.fn(async (id: string, paypalOrderId: string) =>
+  id === fakeOrder.id
+    ? { ...fakeOrder, status: "CONFIRMED", paymentStatus: "PAID", paypalOrderId }
+    : null
+);
+const getOrderById = vi.fn(async (id: string) => (id === fakeOrder.id ? fakeOrder : null));
+
 vi.mock("../../src/lib/repositories/orders", () => ({
-  createOrder: vi.fn(async () => fakeOrder),
-  getOrderById: vi.fn(async (id: string) => (id === fakeOrder.id ? fakeOrder : null)),
+  createOrder: vi.fn(async () => ({ ...fakeOrder })),
+  getOrderById: (...args: [string]) => getOrderById(...args),
   listOrders: vi.fn(async () => [fakeOrder]),
   updateOrderStatus: vi.fn(async (id: string, status: string) =>
     id === fakeOrder.id ? { ...fakeOrder, status } : null
   ),
+  setOrderPaymentMethod: (...args: [string, string]) => setOrderPaymentMethod(...args),
+  setOrderPayPalOrderId: (...args: [string, string]) => setOrderPayPalOrderId(...args),
+  markOrderPaid: (...args: [string, string]) => markOrderPaid(...args),
+}));
+
+const createPayPalOrder = vi.fn(async (_amountCents: number, _orderId: string) => "PAYPAL-ORDER-ID");
+const capturePayPalOrder = vi.fn(async (_paypalOrderId: string) => ({ captured: true, paypalOrderId: "PAYPAL-ORDER-ID" }));
+
+vi.mock("../../src/lib/paypal", () => ({
+  createPayPalOrder: (...args: [number, string]) => createPayPalOrder(...args),
+  capturePayPalOrder: (...args: [string]) => capturePayPalOrder(...args),
 }));
 
 beforeAll(() => {
   process.env.JWT_SECRET = "test-secret-at-least-16-chars-long";
+});
+
+beforeEach(() => {
+  getOrderById.mockClear();
+  getOrderById.mockImplementation(async (id: string) => (id === fakeOrder.id ? fakeOrder : null));
+  createPayPalOrder.mockClear();
+  capturePayPalOrder.mockClear();
+  capturePayPalOrder.mockResolvedValue({ captured: true, paypalOrderId: "PAYPAL-ORDER-ID" });
 });
 
 const { createApp } = await import("../../src/app");
@@ -89,6 +122,7 @@ describe("POST /orders", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.order.id).toBe(fakeOrder.id);
+    expect(res.body.order.paymentMethod).toBe("MANUAL");
   });
 
   it("returns the standard error envelope for an empty cart", async () => {
@@ -123,6 +157,25 @@ describe("POST /orders", () => {
 
     expect(res.status).toBe(400);
     expect(res.body.errors[0]).toMatch(/no longer available/);
+  });
+
+  it("marks the order PAYPAL when the buyer chose to pay online", async () => {
+    const app = createApp();
+    const res = await request(app)
+      .post("/orders")
+      .send({
+        customerName: "Jane Baker",
+        customerEmail: "jane@example.com",
+        customerPhone: "555-123-4567",
+        fulfillmentMethod: "PICKUP",
+        requestedDate: "2099-01-05",
+        items: [{ productId: products[0].id, quantity: 1 }],
+        paymentMethod: "PAYPAL",
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.order.paymentMethod).toBe("PAYPAL");
+    expect(setOrderPaymentMethod).toHaveBeenCalledWith(fakeOrder.id, "PAYPAL");
   });
 });
 
@@ -192,5 +245,80 @@ describe("PATCH /orders/:id/status (admin)", () => {
       .send({ status: "NOT_A_REAL_STATUS" });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /orders/:id/paypal-order", () => {
+  it("creates a PayPal order sized to the order's own subtotal", async () => {
+    const app = createApp();
+    const res = await request(app).post(`/orders/${fakeOrder.id}/paypal-order`).send();
+
+    expect(res.status).toBe(200);
+    expect(res.body.paypalOrderId).toBe("PAYPAL-ORDER-ID");
+    expect(createPayPalOrder).toHaveBeenCalledWith(fakeOrder.subtotalCents, fakeOrder.id);
+  });
+
+  it("404s for an order that doesn't exist", async () => {
+    const app = createApp();
+    const res = await request(app).post("/orders/does-not-exist/paypal-order").send();
+    expect(res.status).toBe(404);
+  });
+
+  it("400s if the order is already paid", async () => {
+    getOrderById.mockResolvedValueOnce({ ...fakeOrder, paymentStatus: "PAID" });
+    const app = createApp();
+    const res = await request(app).post(`/orders/${fakeOrder.id}/paypal-order`).send();
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /orders/:id/capture-payment", () => {
+  it("captures payment and returns the updated, CONFIRMED order", async () => {
+    getOrderById.mockResolvedValueOnce({ ...fakeOrder, paypalOrderId: "PAYPAL-ORDER-ID" });
+    const app = createApp();
+    const res = await request(app)
+      .post(`/orders/${fakeOrder.id}/capture-payment`)
+      .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.order.paymentStatus).toBe("PAID");
+    expect(res.body.order.status).toBe("CONFIRMED");
+  });
+
+  it("400s when the PayPal order id doesn't match this order's", async () => {
+    getOrderById.mockResolvedValueOnce({ ...fakeOrder, paypalOrderId: "SOME-OTHER-ID" });
+    const app = createApp();
+    const res = await request(app)
+      .post(`/orders/${fakeOrder.id}/capture-payment`)
+      .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("400s when PayPal reports the capture wasn't completed", async () => {
+    getOrderById.mockResolvedValueOnce({ ...fakeOrder, paypalOrderId: "PAYPAL-ORDER-ID" });
+    capturePayPalOrder.mockResolvedValueOnce({ captured: false, paypalOrderId: "PAYPAL-ORDER-ID" });
+    const app = createApp();
+    const res = await request(app)
+      .post(`/orders/${fakeOrder.id}/capture-payment`)
+      .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+
+    expect(res.status).toBe(400);
+    expect(markOrderPaid).not.toHaveBeenCalled();
+  });
+
+  it("is idempotent for an order that's already been captured", async () => {
+    getOrderById.mockResolvedValueOnce({
+      ...fakeOrder,
+      paypalOrderId: "PAYPAL-ORDER-ID",
+      paymentStatus: "PAID",
+    });
+    const app = createApp();
+    const res = await request(app)
+      .post(`/orders/${fakeOrder.id}/capture-payment`)
+      .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+
+    expect(res.status).toBe(200);
+    expect(capturePayPalOrder).not.toHaveBeenCalled();
   });
 });
