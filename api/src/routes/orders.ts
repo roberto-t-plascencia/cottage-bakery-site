@@ -12,6 +12,7 @@ import {
 } from "../lib/repositories/orders";
 import { capturePayPalOrder, createPayPalOrder } from "../lib/paypal";
 import { validateOrder } from "../lib/orders";
+import { sendOrderReceivedEmail, sendPaymentConfirmedEmail } from "../lib/email";
 import { parseDateOnly } from "../lib/cart";
 import { requireAdmin } from "../middleware/requireAdmin";
 import type { OrderStatus } from "../lib/types";
@@ -137,6 +138,12 @@ ordersRouter.post("/", async (req, res) => {
     order.paymentMethod = "PAYPAL";
   }
 
+  // Fires for every order, MANUAL or PAYPAL — see lib/email.ts's
+  // sendOrderReceivedEmail comment. Awaited (not fire-and-forget) since
+  // nothing runs after this handler's response on this serverless
+  // platform, but never throws — see that file's top comment.
+  await sendOrderReceivedEmail(order);
+
   res.status(201).json({ order });
 });
 
@@ -242,5 +249,8 @@ ordersRouter.post("/:id/capture-payment", async (req, res) => {
   }
 
   const updated = await markOrderPaid(order.id, result.paypalOrderId);
+  if (updated) {
+    await sendPaymentConfirmedEmail(updated);
+  }
   res.json({ order: updated });
 });
