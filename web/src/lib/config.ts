@@ -16,8 +16,8 @@ export const bakeryConfig = {
   // California cottage food registration number issued by the county health
   // department. Required on every product label — see docs/adr/0002.
   registrationNumber: "DEH2026-FCFO-002557",
-  contactEmail: "hello@example.com",
-  contactPhone: "(555) 555-5555",
+  contactEmail: "robplascencia@gmail.com",
+  contactPhone: "(858) 373-9363",
   instagramHandle: "@yourcottagebakery",
   serviceCounty: "San Diego",
   // Class A CFOs may only ship/deliver directly to consumers within
