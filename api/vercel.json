@@ -1,7 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/index.ts": { "excludeFiles": "**/*.does-not-exist" }
-  },
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+  "builds": [{ "src": "api/index.ts", "use": "@vercel/node" }],
+  "routes": [{ "src": "/(.*)", "dest": "/api/index.ts" }]
 }
