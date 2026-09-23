@@ -58,14 +58,20 @@ export default function AboutPage() {
         </ol>
         <h2>Cottage food disclosure</h2>
         <p>
-          This is a home-based food business operating under California&rsquo;s
-          Cottage Food Program (AB 1616). It is registered, not permitted or
-          inspected the way a commercial food facility is.{" "}
-          <strong>
-            Exact required disclosure language should be confirmed with{" "}
-            {bakeryConfig.county} County Environmental Health before launch
-          </strong>{" "}
-          — replace this section with the wording your county provides.
+          Made in a Home Kitchen. {bakeryConfig.businessName} is a Class A
+          Cottage Food Operation (CFO) registered with {bakeryConfig.county}{" "}
+          County Environmental Health, registration #
+          {bakeryConfig.registrationNumber}. A CFO is a business run from the
+          private home where the operator lives, and it may only make foods
+          California classifies as &ldquo;non-potentially hazardous&rdquo;:
+          foods that don&rsquo;t need refrigeration to stay safe. The
+          California Department of Public Health keeps the list of approved
+          foods.
+        </p>
+        <p>
+          As a Class A CFO, we sell only directly to customers within
+          California. We don&rsquo;t sell through stores, restaurants, or
+          other resellers, and we can&rsquo;t ship outside the state.
         </p>
       </div>
     </div>
