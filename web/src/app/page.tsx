@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { bakeryConfig } from "@/lib/config";
 
@@ -5,6 +6,15 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-16">
       <section className="text-center">
+        <Image
+          src="/logo-seal.svg"
+          alt=""
+          width={176}
+          height={176}
+          priority
+          unoptimized
+          className="mx-auto mb-8"
+        />
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
           {bakeryConfig.businessName}
         </h1>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { bakeryConfig } from "@/lib/config";
 import { useCart } from "@/lib/CartContext";
@@ -16,7 +17,9 @@ export function Header() {
   return (
     <header className="border-b border-black/10 dark:border-white/10">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+        <Link href="/" className="flex items-center gap-3 text-lg font-semibold tracking-tight">
+          {/* Decorative: the business name right beside it is the link's accessible name. */}
+          <Image src="/logo-mark.svg" alt="" width={36} height={36} priority unoptimized />
           {bakeryConfig.businessName}
         </Link>
         <nav className="flex items-center gap-6 text-sm">
