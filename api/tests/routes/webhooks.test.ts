@@ -3,10 +3,30 @@ import request from "supertest";
 import type { PaymentStatus } from "../../src/lib/types";
 import type { WebhookSignatureParams } from "../../src/lib/paypal";
 
+// Full Order shape (not just the id/paymentStatus/paypalOrderId this
+// file used before) -- markOrderPaid's real return now also feeds
+// sendPaymentConfirmedEmail (see src/routes/webhooks.ts), which reads
+// customerName/customerEmail/subtotalCents/requestedDate. A real DB row
+// always has these; a minimal mock here doesn't, so the "marks the
+// order paid" test below was throwing inside parseDateOnly(undefined)
+// -- a test-fixture gap, not a production bug (see orders.test.ts's
+// fakeOrder for the same full-shape pattern already used there).
 const fakeOrder = {
   id: "22222222-2222-2222-2222-222222222222",
+  customerName: "Jane Baker",
+  customerEmail: "jane@example.com",
+  customerPhone: "555-123-4567",
+  fulfillmentMethod: "PICKUP" as const,
+  fulfillmentAddress: null,
+  requestedDate: "2099-01-05",
+  notes: null,
+  status: "PENDING" as const,
+  subtotalCents: 2200,
+  paymentMethod: "MANUAL" as const,
   paymentStatus: "UNPAID" as PaymentStatus,
-  paypalOrderId: "PAYPAL-ORDER-ID",
+  paypalOrderId: "PAYPAL-ORDER-ID" as string | null,
+  createdAt: "2026-01-01T00:00:00Z",
+  updatedAt: "2026-01-01T00:00:00Z",
 };
 
 const getOrderByPayPalOrderId = vi.fn(async (id: string) =>
