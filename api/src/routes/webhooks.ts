@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { verifyWebhookSignature } from "../lib/paypal";
 import { getOrderByPayPalOrderId, markOrderPaid } from "../lib/repositories/orders";
+import { sendPaymentConfirmedEmail } from "../lib/email";
 
 export const webhooksRouter = Router();
 
@@ -67,7 +68,10 @@ webhooksRouter.post("/paypal", async (req, res) => {
     // PAID, since this can legitimately race with the synchronous
     // capture path for the same order.
     if (order && order.paymentStatus !== "PAID") {
-      await markOrderPaid(order.id, paypalOrderId);
+      const updated = await markOrderPaid(order.id, paypalOrderId);
+      if (updated) {
+        await sendPaymentConfirmedEmail(updated);
+      }
     }
   }
   // PAYMENT.CAPTURE.DENIED: intentionally a no-op. There's no separate
