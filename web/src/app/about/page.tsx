@@ -47,8 +47,13 @@ export default function AboutPage() {
             ready date (orders need lead time for baking).
           </li>
           <li>
-            Submit the order request — you&rsquo;ll be contacted to confirm
-            details and arrange payment (cash, Venmo, or Zelle).
+            Choose how to pay: pay online now by credit/debit card or PayPal
+            (no PayPal account needed), or pay with cash, Venmo, or Zelle at
+            pickup, at delivery, or before shipping.
+          </li>
+          <li>
+            Submit your order. You&rsquo;ll get a confirmation email, and
+            we&rsquo;ll contact you to confirm the details.
           </li>
         </ol>
         <h2>Cottage food disclosure</h2>
