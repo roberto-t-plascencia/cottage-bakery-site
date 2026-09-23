@@ -8,10 +8,36 @@ export default function AboutPage() {
       <h1 className="text-3xl font-bold tracking-tight">About</h1>
       <div className="prose prose-neutral mt-6 dark:prose-invert">
         <p>
+          Mission Valley Home Bakers began decades before the first brick was
+          laid or the first hole was dug. Long before opening our doors,
+          Roberto Sr. and his wife, Violeta, were already building something
+          special in their kitchen.
+        </p>
+        <p>
+          What began as a shared passion for baking soon became a lifelong
+          commitment to learning, experimenting, and perfecting an ancient
+          craft. Through countless recipes, adjustments, and late nights spent
+          baking, we developed our own approach—one rooted in patience,
+          quality ingredients, and a genuine love for what we do.
+        </p>
+        <p>
+          As our skills and passion grew, so did our dream. We realized that
+          baking was more than a hobby; it was a way to bring people together
+          and create something meaningful. Eventually, we decided to turn our
+          passion into a way of life and establish a baking business built on
+          tradition, hard work, and homemade flavor.
+        </p>
+        <p>
+          That dream became Mission Valley Home Bakers—a family-inspired
+          business dedicated to sharing carefully crafted baked goods with our
+          community. Every item we make carries a piece of our journey: the
+          years of practice, the lessons learned, and the love that first
+          brought us into the kitchen.
+        </p>
+        <p>
           {bakeryConfig.businessName} is a licensed Class A Cottage Food
           Operation, registered with {bakeryConfig.county} County. Everything
-          is baked to order in a home kitchen in {bakeryConfig.city}, CA —
-          replace this paragraph with your own story.
+          is baked to order in a home kitchen in {bakeryConfig.city}, CA.
         </p>
         <h2>How ordering works</h2>
         <ol>
