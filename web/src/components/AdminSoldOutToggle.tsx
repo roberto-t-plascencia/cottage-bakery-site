@@ -10,9 +10,9 @@ export type AdminMenuItem = {
 };
 
 /**
- * One row of the admin "Today's menu" list: a switch that marks the item
- * sold out for today. It turns itself back on at midnight (bakery time),
- * and customers can still order it for tomorrow or later.
+ * The admin menu's "sold out today" switch for one item (see
+ * AdminMenuRow). It turns itself back on at midnight (bakery time), and
+ * customers can still order the item for tomorrow or later.
  */
 export function AdminSoldOutToggle({ item }: { item: AdminMenuItem }) {
   const router = useRouter();
@@ -40,7 +40,7 @@ export function AdminSoldOutToggle({ item }: { item: AdminMenuItem }) {
   }
 
   return (
-    <li className="flex items-center justify-between gap-4 py-3">
+    <div className="flex flex-1 items-center justify-between gap-4">
       <div>
         <p className="font-medium">{item.name}</p>
         <p className={soldOut ? "text-sm text-red-700 dark:text-red-400" : "text-sm text-black/60 dark:text-white/60"}>
@@ -63,6 +63,6 @@ export function AdminSoldOutToggle({ item }: { item: AdminMenuItem }) {
       >
         {soldOut ? "Back in stock" : "Mark sold out"}
       </button>
-    </li>
+    </div>
   );
 }

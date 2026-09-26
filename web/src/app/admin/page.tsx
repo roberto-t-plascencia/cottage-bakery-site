@@ -5,6 +5,7 @@ import { ADMIN_SESSION_COOKIE_NAME } from "@/lib/auth";
 import { AdminOrderRow } from "@/components/AdminOrderRow";
 import { AdminLogoutButton } from "@/components/AdminLogoutButton";
 import { AdminSoldOutToggle } from "@/components/AdminSoldOutToggle";
+import { AdminProductPhoto } from "@/components/AdminProductPhoto";
 
 export const metadata = { title: "Admin · Orders" };
 
@@ -32,7 +33,7 @@ export default async function AdminOrdersPage() {
   try {
     [orders, products] = await Promise.all([
       apiClient.listOrders(token),
-      apiClient.listProducts(),
+      apiClient.listAllProducts(token),
     ]);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
@@ -53,13 +54,25 @@ export default async function AdminOrdersPage() {
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">
           Mark an item sold out when today&apos;s batch is gone. Customers can
           still order it for tomorrow, and it comes back on its own at midnight.
+          Tap a photo button to add or change an item&apos;s picture.
         </p>
         <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
           {products.map((p) => (
-            <AdminSoldOutToggle
-              key={p.id}
-              item={{ id: p.id, name: p.name, soldOutToday: p.soldOutToday }}
-            />
+            <li key={p.id} className="flex items-center gap-4 py-3">
+              <AdminProductPhoto productId={p.id} productName={p.name} imageUrl={p.imageUrl} />
+              {p.isActive ? (
+                <AdminSoldOutToggle
+                  item={{ id: p.id, name: p.name, soldOutToday: p.soldOutToday }}
+                />
+              ) : (
+                <div className="flex-1">
+                  <p className="font-medium">{p.name}</p>
+                  <p className="text-sm text-black/50 dark:text-white/50">
+                    Hidden from the menu
+                  </p>
+                </div>
+              )}
+            </li>
           ))}
         </ul>
       </section>

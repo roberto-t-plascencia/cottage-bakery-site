@@ -44,10 +44,11 @@ Supabase project (free tier is fine).
    in the contents of `api/supabase/migrations/0001_init.sql`, then run
    it. (Or, with the Supabase CLI linked to your project:
    `supabase db push` from `api/`.)
-3. **Create the Storage bucket**: Storage → New bucket → name it
-   `product-images` → mark it **Public** (see `api/src/lib/storage.ts`
-   for why public is the right call here — product photos aren't
-   sensitive).
+3. **Create the Storage bucket**: run
+   `api/supabase/migrations/0006_product_images_bucket.sql` in the SQL
+   Editor (or Storage → New bucket → `product-images` → **Public**). See
+   `api/src/lib/storage.ts` for why public is the right call here —
+   product photos aren't sensitive.
 4. **Get your API credentials**: Project Settings → API → copy the
    Project URL and the `service_role` secret key (not the `anon` key —
    see `api/src/lib/supabase.ts` for why). These go in `api/.env`
@@ -94,28 +95,22 @@ npm run dev              # http://localhost:3000
    rather than shared.)
 2. Edit `api/src/data/products.seed.ts` — your actual menu, then re-run
    `npm run db:seed` from `api/` (safe to re-run; it upserts by slug).
-3. **Product photos**: there's no admin upload UI yet (see "What's not
-   built" below) — upload images directly in the Supabase dashboard
-   (Storage → `product-images` → upload), copy the public URL it gives
-   you, and set it as that product's `imageUrl` in
-   `api/src/data/products.seed.ts` (or call `uploadProductImage` from
-   `api/src/lib/storage.ts` in a one-off script). Products with no
-   `imageUrl` just render without a photo — it's optional.
+3. **Product photos**: add them from the admin dashboard (`/admin` →
+   Today's menu → "Add photo" next to each item). Photos are shrunk in
+   the browser before upload, so a picture straight from a phone is fine.
+   Products with no photo just render without one — it's optional.
 4. Read `web/src/app/about/page.tsx` — the cottage-food disclosure text
    there is a placeholder. Confirm the exact required wording with your
    county's Environmental Health department before launch.
 
 ### What's not built
 
-Being upfront about scope: there's no admin UI for editing the menu or
-uploading photos (menu changes go through `api/src/data/products.seed.ts`
-and a redeploy/reseed; photos go through the Supabase dashboard
-directly, per above). `api/src/lib/storage.ts` has the upload/delete
-functions a "manage menu from the admin dashboard" feature would call —
-it's just not wired to a form or an `api/` route yet. Worth building
-once the bakery is placing enough real orders that editing a TypeScript
-file to change the menu feels like friction rather than "fine, it's
-rare."
+Being upfront about scope: there's no admin UI for editing menu items
+themselves (name, price, label text, adding or hiding items). Those
+changes go through `api/src/data/products.seed.ts` plus a SQL update on
+each database. The admin dashboard does handle photos and the daily
+"sold out" switch. Worth building once editing the menu by hand feels
+like friction rather than "fine, it's rare."
 
 ## Scripts
 
