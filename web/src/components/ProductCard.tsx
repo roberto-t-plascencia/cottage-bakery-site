@@ -14,6 +14,7 @@ export type ProductCardData = {
   ingredients: string;
   netWeight: string;
   imageUrl?: string | null;
+  soldOutToday?: boolean;
 };
 
 export function ProductCard({ product }: { product: ProductCardData }) {
@@ -64,6 +65,11 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {formatCents(product.priceCents)}
           </span>
         </div>
+        {product.soldOutToday && (
+          <p className="mt-2 inline-block rounded-full bg-red-700/10 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-400/15 dark:text-red-300">
+            Sold out today · order for tomorrow
+          </p>
+        )}
         <p className="mt-2 text-sm text-black/70 dark:text-white/70">
           {product.description}
         </p>

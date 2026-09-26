@@ -4,6 +4,7 @@ import { apiClient, ApiError } from "@/lib/apiClient";
 import { ADMIN_SESSION_COOKIE_NAME } from "@/lib/auth";
 import { AdminOrderRow } from "@/components/AdminOrderRow";
 import { AdminLogoutButton } from "@/components/AdminLogoutButton";
+import { AdminSoldOutToggle } from "@/components/AdminSoldOutToggle";
 
 export const metadata = { title: "Admin · Orders" };
 
@@ -27,8 +28,12 @@ export default async function AdminOrdersPage() {
   if (!token) redirect("/admin/login");
 
   let orders;
+  let products;
   try {
-    orders = await apiClient.listOrders(token);
+    [orders, products] = await Promise.all([
+      apiClient.listOrders(token),
+      apiClient.listProducts(),
+    ]);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
       redirect("/admin/login");
@@ -39,9 +44,27 @@ export default async function AdminOrdersPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
         <AdminLogoutButton />
       </div>
+
+      <section className="mt-8 rounded-2xl border border-black/10 p-6 dark:border-white/10">
+        <h2 className="text-lg font-semibold">Today&apos;s menu</h2>
+        <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+          Mark an item sold out when today&apos;s batch is gone. Customers can
+          still order it for tomorrow, and it comes back on its own at midnight.
+        </p>
+        <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
+          {products.map((p) => (
+            <AdminSoldOutToggle
+              key={p.id}
+              item={{ id: p.id, name: p.name, soldOutToday: p.soldOutToday }}
+            />
+          ))}
+        </ul>
+      </section>
+
+      <h2 className="mt-12 text-lg font-semibold">Orders</h2>
 
       {orders.length === 0 ? (
         <p className="mt-8 text-black/60 dark:text-white/60">

@@ -125,6 +125,12 @@ export function bakeryCalendarDate(now: Date = new Date()): Date {
   return new Date(year, month - 1, day);
 }
 
+/** Today's date at the bakery as "YYYY-MM-DD", e.g. for "sold out today" checks. */
+export function bakeryToday(now: Date = new Date()): string {
+  const { year, month, day } = bakeryNow(now);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function bakeryNow(now: Date): { year: number; month: number; day: number; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: BAKERY_TIME_ZONE,

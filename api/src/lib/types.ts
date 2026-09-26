@@ -37,11 +37,16 @@ export type Product = {
   ingredients: string;
   netWeight: string;
   isActive: boolean;
+  // Bakery date ("YYYY-MM-DD") the admin marked it sold out, or null. See
+  // supabase/migrations/0005_add_sold_out_on.sql.
+  soldOutOn: string | null;
+  // Derived when read: soldOutOn is today's bakery date.
+  soldOutToday: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
-export type NewProduct = Omit<Product, "id" | "createdAt" | "updatedAt">;
+export type NewProduct = Omit<Product, "id" | "createdAt" | "updatedAt" | "soldOutOn" | "soldOutToday">;
 
 export type OrderItem = {
   id: string;

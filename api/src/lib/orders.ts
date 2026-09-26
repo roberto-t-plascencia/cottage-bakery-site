@@ -1,5 +1,6 @@
 import { bakeryConfig } from "./config";
 import { earliestReadyDate, formatCutoff, sameDayCutoffMinutes, type CartLine } from "./cart";
+import { normalizeUsPhone } from "./phone";
 import type { FulfillmentMethod } from "./types";
 
 export type { FulfillmentMethod };
@@ -32,7 +33,11 @@ export function validateOrder(input: OrderInput): ValidationResult {
 
   if (!input.customerName.trim()) errors.push("Name is required.");
   if (!EMAIL_RE.test(input.customerEmail)) errors.push("A valid email is required.");
-  if (!input.customerPhone.trim()) errors.push("Phone number is required.");
+  if (!input.customerPhone.trim()) {
+    errors.push("Phone number is required.");
+  } else if (!normalizeUsPhone(input.customerPhone)) {
+    errors.push("Enter a 10-digit phone number, like (858) 373-9363.");
+  }
   if (input.items.length === 0) errors.push("Cart is empty.");
   if (input.items.some((i) => i.quantity <= 0)) {
     errors.push("Item quantities must be positive.");

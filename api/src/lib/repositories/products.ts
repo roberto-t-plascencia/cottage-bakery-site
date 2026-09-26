@@ -1,7 +1,9 @@
 import { supabase } from "../supabase";
+import { bakeryToday } from "../cart";
 import type { NewProduct, Product } from "../types";
 
-type ProductRow = {
+// Also used by ./orders.ts for the product embedded in each order item.
+export type ProductRow = {
   id: string;
   slug: string;
   name: string;
@@ -13,11 +15,12 @@ type ProductRow = {
   ingredients: string;
   net_weight: string;
   is_active: boolean;
+  sold_out_on: string | null;
   created_at: string;
   updated_at: string;
 };
 
-function rowToProduct(row: ProductRow): Product {
+export function rowToProduct(row: ProductRow): Product {
   return {
     id: row.id,
     slug: row.slug,
@@ -30,6 +33,8 @@ function rowToProduct(row: ProductRow): Product {
     ingredients: row.ingredients,
     netWeight: row.net_weight,
     isActive: row.is_active,
+    soldOutOn: row.sold_out_on,
+    soldOutToday: row.sold_out_on !== null && row.sold_out_on === bakeryToday(),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -68,6 +73,22 @@ export async function getProductById(id: string): Promise<Product | null> {
     .maybeSingle();
 
   if (error) throw new Error(`getProductById: ${error.message}`);
+  return data ? rowToProduct(data as ProductRow) : null;
+}
+
+/**
+ * Marks a product sold out for the given bakery date, or clears it
+ * (null). Returns null when no product has that id.
+ */
+export async function setProductSoldOutOn(id: string, date: string | null): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .update({ sold_out_on: date })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(`setProductSoldOutOn: ${error.message}`);
   return data ? rowToProduct(data as ProductRow) : null;
 }
 

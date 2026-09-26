@@ -110,7 +110,50 @@ beforeEach(() => {
 const { createApp } = await import("../../src/app");
 const { issueAdminToken } = await import("../../src/lib/auth");
 
+const productsRepo = await import("../../src/lib/repositories/products");
+const { bakeryToday } = await import("../../src/lib/cart");
+
 describe("POST /orders", () => {
+  it("rejects a sold-out item for today but accepts it for a later date", async () => {
+    const soldOut = [{ ...products[0], soldOutOn: bakeryToday(), soldOutToday: true }];
+    const order = (requestedDate: string) =>
+      request(createApp())
+        .post("/orders")
+        .send({
+          customerName: "Jane Baker",
+          customerEmail: "jane@example.com",
+          customerPhone: "555-123-4567",
+          fulfillmentMethod: "LOCAL_DELIVERY",
+          fulfillmentAddress: "123 Main St, San Diego, CA 92108",
+          requestedDate,
+          items: [{ productId: products[0].id, quantity: 1 }],
+        });
+
+    vi.mocked(productsRepo.findProductsByIds).mockResolvedValueOnce(soldOut as never);
+    const today = await order(bakeryToday());
+    expect(today.status).toBe(400);
+    expect(today.body.errors).toEqual([
+      "Cookies is sold out for today. Please pick tomorrow or later.",
+    ]);
+
+    vi.mocked(productsRepo.findProductsByIds).mockResolvedValueOnce(soldOut as never);
+    expect((await order("2099-01-05")).status).toBe(201);
+  });
+
+  it("stores the phone number as (###) ###-####", async () => {
+    await request(createApp())
+      .post("/orders")
+      .send({
+        customerName: "Jane Baker",
+        customerEmail: "jane@example.com",
+        customerPhone: "555.123.4567",
+        fulfillmentMethod: "PICKUP",
+        requestedDate: "2099-01-05",
+        items: [{ productId: products[0].id, quantity: 1 }],
+      });
+    expect(createOrder.mock.calls.at(-1)?.[0]).toMatchObject({ customerPhone: "(555) 123-4567" });
+  });
+
   it("creates an order for a well-formed request", async () => {
     const app = createApp();
     const res = await request(app)
