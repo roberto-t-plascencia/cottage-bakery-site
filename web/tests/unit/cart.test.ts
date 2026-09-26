@@ -96,16 +96,24 @@ describe("formatCents", () => {
 describe("earliestReadyDate", () => {
   // Exact instants ("Z" timestamps), since the rule now counts days in
   // the bakery's timezone regardless of where the test runs.
-  it("adds the minimum lead time to the bakery's current date", () => {
+  it("is today before the 8 PM pickup cutoff", () => {
     const from = new Date("2026-01-01T20:00:00Z"); // noon, Jan 1, in San Diego
-    expect(toDateInputValue(earliestReadyDate(from))).toBe("2026-01-03");
+    expect(toDateInputValue(earliestReadyDate("PICKUP", from))).toBe("2026-01-01");
   });
 
-  it("counts from the bakery's date in the evening, when UTC is already tomorrow", () => {
-    // 8:03 PM Pacific on Sep 25 is 03:03 UTC on Sep 26. The earliest
-    // date must still be Sep 25 + 2, not Sep 26 + 2 (the bug this pins).
-    const from = new Date("2026-09-26T03:03:00Z");
-    expect(toDateInputValue(earliestReadyDate(from))).toBe("2026-09-27");
+  it("stays on the bakery's date in the evening, when UTC is already tomorrow", () => {
+    // 7:59 PM Pacific on Sep 25 is 02:59 UTC on Sep 26: still Sep 25.
+    const from = new Date("2026-09-26T02:59:00Z");
+    expect(toDateInputValue(earliestReadyDate("PICKUP", from))).toBe("2026-09-25");
+  });
+
+  it("moves pickup to tomorrow at 8 PM, but keeps same-day delivery open until 9:30 PM", () => {
+    const eightOhThree = new Date("2026-09-26T03:03:00Z"); // 8:03 PM Sep 25 in San Diego
+    expect(toDateInputValue(earliestReadyDate("PICKUP", eightOhThree))).toBe("2026-09-26");
+    expect(toDateInputValue(earliestReadyDate("LOCAL_DELIVERY", eightOhThree))).toBe("2026-09-25");
+
+    const nineThirty = new Date("2026-09-26T04:30:00Z"); // 9:30 PM Sep 25 in San Diego
+    expect(toDateInputValue(earliestReadyDate("LOCAL_DELIVERY", nineThirty))).toBe("2026-09-26");
   });
 });
 

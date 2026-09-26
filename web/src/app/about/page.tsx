@@ -44,7 +44,8 @@ export default function AboutPage() {
           <li>Browse the menu and add items to your order.</li>
           <li>
             Choose pickup, local delivery, or in-state shipping, and pick a
-            ready date (orders need lead time for baking).
+            ready date. Same-day orders are open until 8 PM for pickup and
+            9:30 PM for local delivery.
           </li>
           <li>
             Choose how to pay: pay online now by credit/debit card or PayPal

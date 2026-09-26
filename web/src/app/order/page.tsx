@@ -7,6 +7,8 @@ import {
   cartSubtotalCents,
   earliestReadyDate,
   formatCents,
+  formatCutoff,
+  sameDayCutoffMinutes,
   toDateInputValue,
 } from "@/lib/cart";
 import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
@@ -29,7 +31,7 @@ type FormState = {
 export default function OrderPage() {
   const router = useRouter();
   const { cart, remove, setQuantity, clear } = useCart();
-  const minDate = useMemo(() => toDateInputValue(earliestReadyDate()), []);
+  const initialMinDate = useMemo(() => toDateInputValue(earliestReadyDate("PICKUP")), []);
 
   const [form, setForm] = useState<FormState>({
     customerName: "",
@@ -37,7 +39,7 @@ export default function OrderPage() {
     customerPhone: "",
     fulfillmentMethod: "PICKUP",
     fulfillmentAddress: "",
-    requestedDate: minDate,
+    requestedDate: initialMinDate,
     notes: "",
     paymentMethod: "MANUAL",
   });
@@ -54,6 +56,11 @@ export default function OrderPage() {
   // delivery fee), shown on the PayPal step instead of re-deriving it.
   const [pendingTotalCents, setPendingTotalCents] = useState<number | null>(null);
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
+
+  // Depends on the fulfillment method: same-day delivery stays open
+  // later than same-day pickup (see sameDayCutoffMinutes in lib/cart.ts).
+  const minDate = toDateInputValue(earliestReadyDate(form.fulfillmentMethod));
+  const sameDayCutoff = formatCutoff(sameDayCutoffMinutes(form.fulfillmentMethod));
 
   const subtotal = cartSubtotalCents(cart);
   const isDelivery = form.fulfillmentMethod === "LOCAL_DELIVERY";
@@ -260,12 +267,20 @@ export default function OrderPage() {
         <Field label="Fulfillment">
           <select
             value={form.fulfillmentMethod}
-            onChange={(e) =>
-              updateField(
-                "fulfillmentMethod",
-                e.target.value as FulfillmentOptionId
-              )
-            }
+            onChange={(e) => {
+              const method = e.target.value as FulfillmentOptionId;
+              const newMin = toDateInputValue(earliestReadyDate(method));
+              // Switching to a method whose same-day window has already
+              // closed moves a now-too-early date up, instead of letting
+              // the server reject it on submit. Date-only strings compare
+              // correctly as plain strings.
+              setForm((prev) => ({
+                ...prev,
+                fulfillmentMethod: method,
+                requestedDate:
+                  prev.requestedDate < newMin ? newMin : prev.requestedDate,
+              }));
+            }}
             className="input"
           >
             {bakeryConfig.fulfillmentOptions.map((opt) => (
@@ -311,7 +326,7 @@ export default function OrderPage() {
             className="input"
           />
           <p className="mt-1 text-xs text-black/50 dark:text-white/50">
-            Earliest available: {minDate}
+            Earliest available: {minDate}. Same-day orders close at {sameDayCutoff}.
           </p>
         </Field>
 

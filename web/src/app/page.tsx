@@ -40,7 +40,7 @@ export default function HomePage() {
       <section className="mt-20 grid gap-8 sm:grid-cols-3">
         <InfoCard
           title="Order ahead"
-          body={`Orders need at least a couple days' lead time for baking — pick a ready date at checkout.`}
+          body={`Order by 8 PM for same-day pickup, or 9:30 PM for same-day delivery, or pick any later ready date at checkout.`}
         />
         <InfoCard
           title="Pickup, delivery, or shipping"

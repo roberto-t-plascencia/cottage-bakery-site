@@ -12,7 +12,28 @@ export type CartLine = {
   quantity: number;
 };
 
-export const MIN_LEAD_TIME_DAYS = 2;
+// Same-day orders are accepted until these times (bakery time, minutes
+// after midnight); from then on, the earliest ready date is tomorrow.
+// Local delivery runs later than pickup. The bakery is open every day;
+// running out of something for the day is handled per product, not by
+// this rule.
+const SAME_DAY_CUTOFF_MINUTES: Record<string, number> = {
+  PICKUP: 20 * 60, // 8:00 PM
+  LOCAL_DELIVERY: 21 * 60 + 30, // 9:30 PM
+  IN_STATE_SHIPPING: 20 * 60, // 8:00 PM
+};
+
+export function sameDayCutoffMinutes(fulfillmentMethod: string): number {
+  return SAME_DAY_CUTOFF_MINUTES[fulfillmentMethod] ?? SAME_DAY_CUTOFF_MINUTES.PICKUP;
+}
+
+/** "8 PM", "9:30 PM" */
+export function formatCutoff(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}${m ? `:${String(m).padStart(2, "0")}` : ""} ${h < 12 ? "AM" : "PM"}`;
+}
 
 export function addToCart(
   cart: CartLine[],
@@ -66,13 +87,20 @@ export function formatCents(cents: number): string {
 }
 
 /**
- * Earliest date a new order could be ready, given baking lead time.
+ * Earliest date a new order could be ready: today until the same-day
+ * cutoff, tomorrow after it.
  * Exported so the checkout form and server-side validation share one
  * definition instead of drifting apart.
  */
-export function earliestReadyDate(from: Date = new Date()): Date {
+export function earliestReadyDate(
+  fulfillmentMethod: string = "PICKUP",
+  from: Date = new Date()
+): Date {
   const result = bakeryCalendarDate(from);
-  result.setDate(result.getDate() + MIN_LEAD_TIME_DAYS);
+  const now = bakeryNow(from);
+  if (now.hour * 60 + now.minute >= sameDayCutoffMinutes(fulfillmentMethod)) {
+    result.setDate(result.getDate() + 1);
+  }
   return result;
 }
 
@@ -81,9 +109,9 @@ export function earliestReadyDate(from: Date = new Date()): Date {
  * is answered here, never in whatever timezone the code happens to run
  * in. Before this, the browser counted days in the customer's local time
  * while api/ (on Vercel) counted in UTC, so from 5 PM Pacific onward —
- * already "tomorrow" in UTC — the server demanded one more day of lead
- * time than the checkout form offered, and every order placed that
- * evening was rejected as "too soon."
+ * already "tomorrow" in UTC — the server's earliest date ran a day ahead
+ * of the checkout form's, and every order placed that evening was
+ * rejected as "too soon."
  */
 export const BAKERY_TIME_ZONE = "America/Los_Angeles";
 
@@ -93,14 +121,22 @@ export const BAKERY_TIME_ZONE = "America/Los_Angeles";
  * lead-time comparison compares like with like in any runtime timezone.
  */
 export function bakeryCalendarDate(now: Date = new Date()): Date {
+  const { year, month, day } = bakeryNow(now);
+  return new Date(year, month - 1, day);
+}
+
+function bakeryNow(now: Date): { year: number; month: number; day: number; hour: number; minute: number } {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: BAKERY_TIME_ZONE,
     year: "numeric",
     month: "numeric",
     day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
   }).formatToParts(now);
   const get = (type: string) => Number(parts.find((p) => p.type === type)!.value);
-  return new Date(get("year"), get("month") - 1, get("day"));
+  return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour"), minute: get("minute") };
 }
 
 /**
