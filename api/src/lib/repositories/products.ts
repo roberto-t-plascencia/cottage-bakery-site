@@ -52,6 +52,31 @@ export async function listActiveProducts(): Promise<Product[]> {
   return (data as ProductRow[]).map(rowToProduct);
 }
 
+/** Every product, including hidden ones — for the admin menu list. */
+export async function listAllProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .order("category", { ascending: true })
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(`listAllProducts: ${error.message}`);
+  return (data as ProductRow[]).map(rowToProduct);
+}
+
+/** Sets (or clears, with null) a product's photo URL. Null when no product has that id. */
+export async function setProductImageUrl(id: string, imageUrl: string | null): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .update({ image_url: imageUrl })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(`setProductImageUrl: ${error.message}`);
+  return data ? rowToProduct(data as ProductRow) : null;
+}
+
 export async function findProductsByIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
 

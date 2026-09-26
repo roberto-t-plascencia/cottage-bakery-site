@@ -81,6 +81,105 @@ paths:
                     items:
                       $ref: "#/components/schemas/Product"
 
+  /products/all:
+    get:
+      operationId: listAllProducts
+      summary: Every product, including hidden ones (isActive false). Admin only.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products]
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/Errors"
+
+  /products/{id}/image:
+    put:
+      operationId: setProductImage
+      summary: |
+        Upload a product photo, replacing any existing one. The request body
+        is the image itself (at most 4 MB). Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+          image/png:
+            schema:
+              type: string
+              format: binary
+          image/webp:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product]
+                properties:
+                  product:
+                    $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+        "413":
+          $ref: "#/components/responses/Errors"
+        "415":
+          $ref: "#/components/responses/Errors"
+    delete:
+      operationId: deleteProductImage
+      summary: Remove a product's photo. Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product]
+                properties:
+                  product:
+                    $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+
   /products/{id}/sold-out:
     patch:
       operationId: setProductSoldOut

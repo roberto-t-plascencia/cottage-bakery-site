@@ -19,14 +19,17 @@ const PRODUCT_IMAGES_BUCKET = "product-images";
  * with no extra resolution step.
  */
 export async function uploadProductImage(
-  file: File | Blob,
-  filename: string
+  file: File | Blob | Buffer,
+  filename: string,
+  contentType?: string
 ): Promise<string> {
   const path = `${Date.now()}-${filename}`;
 
+  // A timestamped path per upload means a replaced photo gets a new URL,
+  // so a long browser cache is safe.
   const { error } = await supabase.storage
     .from(PRODUCT_IMAGES_BUCKET)
-    .upload(path, file, { cacheControl: "3600", upsert: false });
+    .upload(path, file, { cacheControl: "31536000", upsert: false, contentType });
 
   if (error) {
     throw new Error(`Failed to upload product image: ${error.message}`);

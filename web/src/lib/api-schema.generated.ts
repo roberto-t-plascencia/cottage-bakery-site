@@ -60,6 +60,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/products/all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every product, including hidden ones (isActive false). Admin only. */
+        get: operations["listAllProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/{id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Upload a product photo, replacing any existing one. The request body
+         *     is the image itself (at most 4 MB). Admin only.
+         */
+        put: operations["setProductImage"];
+        post?: never;
+        /** Remove a product's photo. Admin only. */
+        delete: operations["deleteProductImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products/{id}/sold-out": {
         parameters: {
             query?: never;
@@ -420,6 +458,89 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    listAllProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        products: components["schemas"]["Product"][];
+                    };
+                };
+            };
+            401: components["responses"]["Errors"];
+        };
+    };
+    setProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/jpeg": string;
+                "image/png": string;
+                "image/webp": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        product: components["schemas"]["Product"];
+                    };
+                };
+            };
+            401: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
+            413: components["responses"]["Errors"];
+            415: components["responses"]["Errors"];
+        };
+    };
+    deleteProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        product: components["schemas"]["Product"];
+                    };
+                };
+            };
+            401: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
         };
     };
     setProductSoldOut: {

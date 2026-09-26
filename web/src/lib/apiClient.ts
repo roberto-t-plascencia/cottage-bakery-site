@@ -45,8 +45,10 @@ export class ApiError extends Error {
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
+  /** Sent as-is instead of JSON, e.g. an image upload. */
+  rawBody?: { data: ArrayBuffer; contentType: string };
   /** Bearer token to forward — see requireAdminToken() below. */
   token?: string;
 };
@@ -54,12 +56,13 @@ type RequestOptions = {
 async function apiFetch<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
+  if (opts.rawBody) headers["Content-Type"] = opts.rawBody.contentType;
   if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
 
   const res = await fetch(`${apiUrl()}${path}`, {
     method: opts.method ?? "GET",
     headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body: opts.rawBody ? opts.rawBody.data : opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     // Server Components / Route Handlers read live order and menu data —
     // never let Next cache a response meant to reflect this request.
     cache: "no-store",
@@ -92,6 +95,21 @@ export const apiClient = {
       body: { status },
       token,
     }).then((r) => r.order),
+
+  listAllProducts: (token: string) =>
+    apiFetch<{ products: Product[] }>("/products/all", { token }).then((r) => r.products),
+
+  setProductImage: (id: string, data: ArrayBuffer, contentType: string, token: string) =>
+    apiFetch<{ product: Product }>(`/products/${id}/image`, {
+      method: "PUT",
+      rawBody: { data, contentType },
+      token,
+    }).then((r) => r.product),
+
+  deleteProductImage: (id: string, token: string) =>
+    apiFetch<{ product: Product }>(`/products/${id}/image`, { method: "DELETE", token }).then(
+      (r) => r.product
+    ),
 
   setProductSoldOut: (id: string, soldOutToday: boolean, token: string) =>
     apiFetch<{ product: Product }>(`/products/${id}/sold-out`, {
