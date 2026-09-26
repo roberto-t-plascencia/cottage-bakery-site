@@ -50,4 +50,73 @@ export const productSeed = [
     netWeight: "12 oz (340 g)",
     isActive: true,
   },
+  {
+    slug: "palermo-pizza",
+    name: "Palermo Pizza",
+    description:
+      "12-inch Sicilian-style pan pizza, cut into 6 pieces: a thick, airy crust topped with tomato, slow-cooked onions, oregano and toasted breadcrumbs. Our cheese-free take on Palermo's sfincione.",
+    priceCents: 1199,
+    category: "Savory",
+    allergens: "wheat",
+    ingredients:
+      "Enriched Wheat Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Water, Tomatoes, Onions, Extra Virgin Olive Oil, Breadcrumbs (Enriched Wheat Flour, Yeast, Salt), Sea Salt, Oregano, Yeast.",
+    netWeight: "36 oz (2 lb 4 oz) 1.02 kg",
+    // Hidden until San Diego County confirms a baked tomato topping is
+    // allowed for a cottage food operation.
+    isActive: false,
+  },
+  {
+    slug: "tomato-basil-flatbread",
+    name: "Tomato Basil Flatbread",
+    description:
+      "Crisp-edged flatbread topped with tomato, fresh basil, garlic and olive oil. No cheese.",
+    priceCents: 799,
+    category: "Savory",
+    allergens: "wheat",
+    ingredients:
+      "Enriched Wheat Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Water, Tomatoes, Extra Virgin Olive Oil, Fresh Basil, Fresh Garlic, Sea Salt, Yeast.",
+    netWeight: "24 oz (1 lb 8 oz) 680 g",
+    // Hidden until San Diego County confirms a baked tomato topping is
+    // allowed for a cottage food operation.
+    isActive: false,
+  },
+  {
+    slug: "swedish-cinnamon-bunz",
+    name: "Swedish Cinnamon Bunz",
+    description:
+      "One big, cardamom-scented Swedish cinnamon bun, finished with a simple sugar glaze.",
+    priceCents: 599,
+    category: "Sweet",
+    allergens: "wheat, milk, eggs",
+    ingredients:
+      "Enriched Wheat Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Whole Milk, Butter, Sugar, Eggs, Cinnamon, Cardamom, Yeast, Salt. Glaze: Powdered Sugar (Sugar, Corn Starch), Water.",
+    netWeight: "12 oz (340 g)",
+    isActive: true,
+  },
+  {
+    slug: "prague-trdelnik",
+    name: "Prague Trdelník",
+    description:
+      "Czech chimney cake: sweet dough wrapped around a spit, baked until golden and rolled in cinnamon sugar.",
+    priceCents: 899,
+    category: "Sweet",
+    allergens: "wheat, milk, eggs",
+    ingredients:
+      "Enriched Wheat Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Whole Milk, Sugar, Butter, Eggs, Yeast, Salt. Coating: Sugar, Cinnamon.",
+    netWeight: "12 oz (340 g)",
+    isActive: true,
+  },
+  {
+    slug: "prague-trdelnik-walnuts",
+    name: "Prague Trdelník with Walnuts",
+    description:
+      "Our Czech chimney cake rolled in cinnamon sugar and chopped walnuts.",
+    priceCents: 899,
+    category: "Sweet",
+    allergens: "wheat, milk, eggs, walnuts",
+    ingredients:
+      "Enriched Wheat Flour (Wheat Flour, Niacin, Reduced Iron, Thiamine Mononitrate, Riboflavin, Folic Acid), Whole Milk, Sugar, Butter, Eggs, Yeast, Salt. Coating: Sugar, Cinnamon, Walnuts.",
+    netWeight: "12 oz (340 g)",
+    isActive: true,
+  },
 ] as const;
