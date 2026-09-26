@@ -64,6 +64,52 @@ export async function listAllProducts(): Promise<Product[]> {
   return (data as ProductRow[]).map(rowToProduct);
 }
 
+/** Shows (true) or hides (false) a product on the menu. Null when no product has that id. */
+export async function setProductActive(id: string, isActive: boolean): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .update({ is_active: isActive })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(`setProductActive: ${error.message}`);
+  return data ? rowToProduct(data as ProductRow) : null;
+}
+
+/**
+ * Inserts a new product. If the slug is taken, tries "-2", "-3"… so two
+ * items with the same name can coexist (a URL-safe id must be unique;
+ * names don't have to be).
+ */
+export async function createProduct(product: NewProduct): Promise<Product> {
+  for (let attempt = 1; attempt <= 20; attempt++) {
+    const slug = attempt === 1 ? product.slug : `${product.slug}-${attempt}`;
+    const { data, error } = await supabase
+      .from("products")
+      .insert({
+        slug,
+        name: product.name,
+        description: product.description,
+        price_cents: product.priceCents,
+        category: product.category,
+        image_url: product.imageUrl,
+        allergens: product.allergens,
+        ingredients: product.ingredients,
+        net_weight: product.netWeight,
+        is_active: product.isActive,
+      })
+      .select()
+      .single();
+
+    // 23505 = unique_violation: the slug is taken, try the next one.
+    if (error?.code === "23505") continue;
+    if (error) throw new Error(`createProduct: ${error.message}`);
+    return rowToProduct(data as ProductRow);
+  }
+  throw new Error(`createProduct: no free slug for "${product.slug}"`);
+}
+
 /** Sets (or clears, with null) a product's photo URL. Null when no product has that id. */
 export async function setProductImageUrl(id: string, imageUrl: string | null): Promise<Product | null> {
   const { data, error } = await supabase

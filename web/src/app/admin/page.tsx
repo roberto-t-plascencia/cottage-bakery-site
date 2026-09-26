@@ -6,6 +6,8 @@ import { AdminOrderRow } from "@/components/AdminOrderRow";
 import { AdminLogoutButton } from "@/components/AdminLogoutButton";
 import { AdminSoldOutToggle } from "@/components/AdminSoldOutToggle";
 import { AdminProductPhoto } from "@/components/AdminProductPhoto";
+import { AdminVisibilityToggle } from "@/components/AdminVisibilityToggle";
+import Link from "next/link";
 
 export const metadata = { title: "Admin · Orders" };
 
@@ -50,11 +52,20 @@ export default async function AdminOrdersPage() {
       </div>
 
       <section className="mt-8 rounded-2xl border border-black/10 p-6 dark:border-white/10">
-        <h2 className="text-lg font-semibold">Today&apos;s menu</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold">Today&apos;s menu</h2>
+          <Link
+            href="/admin/products/new"
+            className="rounded-full bg-amber-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-800"
+          >
+            Add product
+          </Link>
+        </div>
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">
           Mark an item sold out when today&apos;s batch is gone. Customers can
           still order it for tomorrow, and it comes back on its own at midnight.
-          Tap a photo button to add or change an item&apos;s picture.
+          &ldquo;Hide from menu&rdquo; takes an item off the menu until you show
+          it again. Tap a photo button to add or change an item&apos;s picture.
         </p>
         <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
           {products.map((p) => (
@@ -72,6 +83,7 @@ export default async function AdminOrdersPage() {
                   </p>
                 </div>
               )}
+              <AdminVisibilityToggle productId={p.id} productName={p.name} isActive={p.isActive} />
             </li>
           ))}
         </ul>

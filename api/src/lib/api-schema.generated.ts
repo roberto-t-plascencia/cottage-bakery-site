@@ -53,11 +53,33 @@ export interface paths {
         /** Active menu items, ordered by category then name. */
         get: operations["listProducts"];
         put?: never;
-        post?: never;
+        /**
+         * Create a product. The slug comes from the name (made unique with a
+         *     numeric suffix if needed). Starts hidden unless isActive is true.
+         *     Admin only.
+         */
+        post: operations["createProduct"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Show (isActive true) or hide a product on the menu. Admin only. */
+        patch: operations["updateProduct"];
         trace?: never;
     };
     "/products/all": {
@@ -304,6 +326,19 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        CreateProductRequest: {
+            name: string;
+            description: string;
+            priceCents: number;
+            category: string;
+            /** @description Comma-separated major food allergens, e.g. "wheat, milk, eggs", or "none". */
+            allergens: string;
+            ingredients: string;
+            /** @description As printed on the label, e.g. "12 oz (340 g)". */
+            netWeight: string;
+            /** @default false */
+            isActive: boolean;
+        };
         OrderItemWithProduct: {
             /** Format: uuid */
             id: string;
@@ -458,6 +493,67 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    createProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        product: components["schemas"]["Product"];
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
+            401: components["responses"]["Errors"];
+        };
+    };
+    updateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    isActive: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        product: components["schemas"]["Product"];
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
+            401: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
         };
     };
     listAllProducts: {

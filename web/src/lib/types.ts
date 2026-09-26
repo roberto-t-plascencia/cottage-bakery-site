@@ -20,3 +20,4 @@ export type Order = components["schemas"]["Order"];
 export type OrderItemWithProduct = components["schemas"]["OrderItemWithProduct"];
 export type OrderWithItems = components["schemas"]["OrderWithItems"];
 export type CreateOrderRequest = components["schemas"]["CreateOrderRequest"];
+export type CreateProductRequest = components["schemas"]["CreateProductRequest"];
