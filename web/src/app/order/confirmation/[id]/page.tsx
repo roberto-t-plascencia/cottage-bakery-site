@@ -45,9 +45,23 @@ export default async function OrderConfirmationPage({
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-between border-t border-black/10 pt-4 font-semibold dark:border-white/10">
-          <span>Subtotal</span>
-          <span>{formatCents(order.subtotalCents)}</span>
+        <div className="mt-4 space-y-1 border-t border-black/10 pt-4 text-sm dark:border-white/10">
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span>{formatCents(order.subtotalCents)}</span>
+          </div>
+          {order.fulfillmentMethod === "LOCAL_DELIVERY" && (
+            <div className="flex justify-between">
+              <span>Delivery</span>
+              <span>
+                {order.deliveryFeeCents === 0 ? "Free" : formatCents(order.deliveryFeeCents)}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 flex justify-between font-semibold">
+          <span>Total</span>
+          <span>{formatCents(order.totalCents)}</span>
         </div>
         <dl className="mt-6 space-y-1 text-sm">
           <div className="flex justify-between">

@@ -64,6 +64,12 @@ export type Order = {
   notes: string | null;
   status: OrderStatus;
   subtotalCents: number;
+  // See docs/adr/0008-delivery-fee.md. 0 for pickup, shipping, and
+  // deliveries at or above the free-delivery threshold.
+  deliveryFeeCents: number;
+  // subtotalCents + deliveryFeeCents: what the customer owes, and what
+  // a PayPal order is created for.
+  totalCents: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   // Set once a PayPal Checkout has been started for this order (see
@@ -85,5 +91,6 @@ export type NewOrderInput = {
   requestedDate: string;
   notes: string | null;
   subtotalCents: number;
+  deliveryFeeCents: number;
   items: { productId: string; quantity: number; unitPriceCents: number }[];
 };
