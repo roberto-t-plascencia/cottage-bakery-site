@@ -97,6 +97,14 @@ export async function createPayPalOrder(amountCents: number, orderId: string): P
           },
         },
       ],
+      // We already have the delivery/shipping address (or it's a pickup),
+      // so PayPal shouldn't ask for one. Without this, its card form
+      // collects a shipping address of its own and can fail on it
+      // (ADD_SHIPPING_ERROR) before the payment ever reaches us.
+      application_context: {
+        shipping_preference: "NO_SHIPPING",
+        brand_name: "Mission Valley Home Bakers",
+      },
     }),
   });
 
