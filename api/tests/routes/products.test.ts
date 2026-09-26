@@ -30,7 +30,18 @@ const getProductById = vi.fn(async (id: string) =>
   id === products[0].id ? { ...products[0], imageUrl: "https://x.supabase.co/storage/v1/object/public/product-images/old.jpg" } : null
 );
 
+const setProductActive = vi.fn(async (id: string, isActive: boolean) =>
+  id === products[0].id ? { ...products[0], isActive } : null
+);
+const createProduct = vi.fn(async (input: Record<string, unknown>) => ({
+  ...products[0],
+  ...input,
+  id: "33333333-3333-3333-3333-333333333333",
+}));
+
 vi.mock("../../src/lib/repositories/products", () => ({
+  createProduct: (...args: [Record<string, unknown>]) => createProduct(...args),
+  setProductActive: (...args: [string, boolean]) => setProductActive(...args),
   listActiveProducts: vi.fn(async () => products),
   listAllProducts: vi.fn(async () => [...products, { ...products[0], id: "hidden", isActive: false }]),
   findProductsByIds: vi.fn(async () => []),
@@ -175,6 +186,82 @@ describe("DELETE /products/:id/image", () => {
     expect(res.status).toBe(200);
     expect(setProductImageUrl).toHaveBeenLastCalledWith(products[0].id, null);
     expect(res.body.product.imageUrl).toBeNull();
+  });
+});
+
+describe("POST /products", () => {
+  const valid = {
+    name: "Concha de Vainilla",
+    description: "Soft sweet bread with a crackly vanilla topping.",
+    priceCents: 350,
+    category: "Sweet",
+    allergens: "wheat, milk, eggs",
+    ingredients: "Enriched Wheat Flour, Milk, Sugar, Butter, Eggs, Yeast, Vanilla, Salt.",
+    netWeight: "4 oz (113 g)",
+  };
+
+  it("requires an admin token", async () => {
+    expect((await request(createApp()).post("/products").send(valid)).status).toBe(401);
+  });
+
+  it("creates the product hidden, with a slug from its name", async () => {
+    const res = await request(createApp())
+      .post("/products")
+      .set("Authorization", `Bearer ${issueAdminToken()}`)
+      .send(valid);
+    expect(res.status).toBe(201);
+    expect(createProduct).toHaveBeenLastCalledWith(
+      expect.objectContaining({ slug: "concha-de-vainilla", isActive: false, imageUrl: null, priceCents: 350 })
+    );
+  });
+
+  it("lists every missing label field", async () => {
+    const res = await request(createApp())
+      .post("/products")
+      .set("Authorization", `Bearer ${issueAdminToken()}`)
+      .send({ ...valid, ingredients: " ", netWeight: undefined, priceCents: 0 });
+    expect(res.status).toBe(400);
+    expect(res.body.errors).toEqual(
+      expect.arrayContaining([
+        "Ingredients is required.",
+        "Net weight is required.",
+        "Price must be more than $0.",
+      ])
+    );
+  });
+});
+
+describe("PATCH /products/:id", () => {
+  const url = `/products/${products[0].id}`;
+
+  it("requires an admin token", async () => {
+    expect((await request(createApp()).patch(url).send({ isActive: false })).status).toBe(401);
+  });
+
+  it("hides and shows a product", async () => {
+    const res = await request(createApp())
+      .patch(url)
+      .set("Authorization", `Bearer ${issueAdminToken()}`)
+      .send({ isActive: false });
+    expect(res.status).toBe(200);
+    expect(res.body.product.isActive).toBe(false);
+    expect(setProductActive).toHaveBeenLastCalledWith(products[0].id, false);
+  });
+
+  it("rejects a body without a boolean", async () => {
+    const res = await request(createApp())
+      .patch(url)
+      .set("Authorization", `Bearer ${issueAdminToken()}`)
+      .send({ isActive: "no" });
+    expect(res.status).toBe(400);
+  });
+
+  it("404s for an unknown product", async () => {
+    const res = await request(createApp())
+      .patch("/products/99999999-9999-9999-9999-999999999999")
+      .set("Authorization", `Bearer ${issueAdminToken()}`)
+      .send({ isActive: true });
+    expect(res.status).toBe(404);
   });
 });
 

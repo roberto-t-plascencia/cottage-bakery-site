@@ -80,6 +80,76 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      summary: |
+        Create a product. The slug comes from the name (made unique with a
+        numeric suffix if needed). Starts hidden unless isActive is true.
+        Admin only.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product]
+                properties:
+                  product:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "401":
+          $ref: "#/components/responses/Errors"
+
+  /products/{id}:
+    patch:
+      operationId: updateProduct
+      summary: Show (isActive true) or hide a product on the menu. Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isActive]
+              properties:
+                isActive:
+                  type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product]
+                properties:
+                  product:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "401":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
 
   /products/all:
     get:
@@ -540,6 +610,38 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    CreateProductRequest:
+      type: object
+      required: [name, description, priceCents, category, allergens, ingredients, netWeight]
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 500
+        priceCents:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        category:
+          type: string
+          maxLength: 40
+        allergens:
+          type: string
+          maxLength: 200
+          description: Comma-separated major food allergens, e.g. "wheat, milk, eggs", or "none".
+        ingredients:
+          type: string
+          maxLength: 2000
+        netWeight:
+          type: string
+          maxLength: 60
+          description: As printed on the label, e.g. "12 oz (340 g)".
+        isActive:
+          type: boolean
+          default: false
 
     OrderItemWithProduct:
       type: object

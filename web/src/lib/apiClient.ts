@@ -1,5 +1,6 @@
 import type {
   CreateOrderRequest,
+  CreateProductRequest,
   FulfillmentMethod,
   Order,
   OrderWithItems,
@@ -110,6 +111,16 @@ export const apiClient = {
     apiFetch<{ product: Product }>(`/products/${id}/image`, { method: "DELETE", token }).then(
       (r) => r.product
     ),
+
+  createProduct: (body: CreateProductRequest, token: string) =>
+    apiFetch<{ product: Product }>("/products", { method: "POST", body, token }).then((r) => r.product),
+
+  setProductActive: (id: string, isActive: boolean, token: string) =>
+    apiFetch<{ product: Product }>(`/products/${id}`, {
+      method: "PATCH",
+      body: { isActive },
+      token,
+    }).then((r) => r.product),
 
   setProductSoldOut: (id: string, soldOutToday: boolean, token: string) =>
     apiFetch<{ product: Product }>(`/products/${id}/sold-out`, {

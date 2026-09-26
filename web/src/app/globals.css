@@ -1,4 +1,7 @@
 @import "tailwindcss";
+/* Styles the long-form text on the About page (its `prose` classes):
+   paragraph spacing, headings and numbered lists. */
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #ffffff;

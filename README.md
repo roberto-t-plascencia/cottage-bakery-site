@@ -105,12 +105,12 @@ npm run dev              # http://localhost:3000
 
 ### What's not built
 
-Being upfront about scope: there's no admin UI for editing menu items
-themselves (name, price, label text, adding or hiding items). Those
-changes go through `api/src/data/products.seed.ts` plus a SQL update on
-each database. The admin dashboard does handle photos and the daily
-"sold out" switch. Worth building once editing the menu by hand feels
-like friction rather than "fine, it's rare."
+Being upfront about scope: the admin dashboard can add products, show
+or hide them, set photos and mark them sold out for the day, but it
+can't edit an existing product's name, price or label text yet. Those
+changes are a SQL update on each database. Products added from the admin
+live only in that environment's database (preview and production are
+separate), not in `api/src/data/products.seed.ts`.
 
 ## Scripts
 
