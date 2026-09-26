@@ -10,7 +10,7 @@ import {
   setOrderPaymentMethod,
   updateOrderStatus,
 } from "../lib/repositories/orders";
-import { capturePayPalOrder, createPayPalOrder } from "../lib/paypal";
+import { capturePayPalOrder, createPayPalOrder, getPayPalOrder } from "../lib/paypal";
 import { validateOrder } from "../lib/orders";
 import { sendOrderReceivedEmail, sendPaymentConfirmedEmail } from "../lib/email";
 import { bakeryToday, parseDateOnly } from "../lib/cart";
@@ -252,8 +252,19 @@ ordersRouter.post("/:id/capture-payment", async (req, res) => {
     return;
   }
   if (order.paypalOrderId !== parsed.data.paypalOrderId) {
-    res.status(400).json({ errors: ["This PayPal order does not match this order."] });
-    return;
+    // PayPal's buttons can create more than one PayPal order during one
+    // checkout (the buyer switches from card to PayPal, or retries), and
+    // only the newest id is stored. An older one is still fine to capture
+    // if PayPal confirms we created it for this order, for this total.
+    const paypalOrder = await getPayPalOrder(parsed.data.paypalOrderId);
+    if (
+      !paypalOrder ||
+      paypalOrder.referenceId !== order.id ||
+      paypalOrder.amountCents !== order.totalCents
+    ) {
+      res.status(400).json({ errors: ["This PayPal order does not match this order."] });
+      return;
+    }
   }
   if (order.paymentStatus === "PAID") {
     // Idempotent: a retried request (e.g. a flaky connection right after

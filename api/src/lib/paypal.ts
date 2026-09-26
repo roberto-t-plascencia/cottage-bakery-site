@@ -97,6 +97,14 @@ export async function createPayPalOrder(amountCents: number, orderId: string): P
           },
         },
       ],
+      // We already have the delivery/shipping address (or it's a pickup),
+      // so PayPal shouldn't ask for one. Without this, its card form
+      // collects a shipping address of its own and can fail on it
+      // (ADD_SHIPPING_ERROR) before the payment ever reaches us.
+      application_context: {
+        shipping_preference: "NO_SHIPPING",
+        brand_name: "Mission Valley Home Bakers",
+      },
     }),
   });
 
@@ -121,6 +129,33 @@ export type PayPalCaptureResult = {
  * outcome, not a server error. A genuinely unexpected failure (network,
  * a PayPal 5xx, a malformed response) still throws.
  */
+/**
+ * Looks up a PayPal order we created: which of our orders it was made for
+ * (the reference_id createPayPalOrder sets) and for how much. Null when
+ * PayPal doesn't know the id.
+ */
+export async function getPayPalOrder(
+  paypalOrderId: string
+): Promise<{ referenceId: string | null; amountCents: number | null } | null> {
+  const token = await getAccessToken();
+  const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`PayPal get-order failed: ${res.status} ${await res.text()}`);
+  }
+  const data = (await res.json()) as {
+    purchase_units?: { reference_id?: string; amount?: { value?: string } }[];
+  };
+  const unit = data.purchase_units?.[0];
+  const value = unit?.amount?.value;
+  return {
+    referenceId: unit?.reference_id ?? null,
+    amountCents: value ? Math.round(Number(value) * 100) : null,
+  };
+}
+
 export async function capturePayPalOrder(paypalOrderId: string): Promise<PayPalCaptureResult> {
   const token = await getAccessToken();
   const res = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders/${paypalOrderId}/capture`, {

@@ -88,10 +88,14 @@ vi.mock("../../src/lib/repositories/orders", () => ({
 
 const createPayPalOrder = vi.fn(async (_amountCents: number, _orderId: string) => "PAYPAL-ORDER-ID");
 const capturePayPalOrder = vi.fn(async (_paypalOrderId: string) => ({ captured: true, paypalOrderId: "PAYPAL-ORDER-ID" }));
+const getPayPalOrder = vi.fn(
+  async (_paypalOrderId: string): Promise<{ referenceId: string | null; amountCents: number | null } | null> => null
+);
 
 vi.mock("../../src/lib/paypal", () => ({
   createPayPalOrder: (...args: [number, string]) => createPayPalOrder(...args),
   capturePayPalOrder: (...args: [string]) => capturePayPalOrder(...args),
+  getPayPalOrder: (...args: [string]) => getPayPalOrder(...args),
 }));
 
 beforeAll(() => {
@@ -380,6 +384,32 @@ describe("POST /orders/:id/capture-payment", () => {
       .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
 
     expect(res.status).toBe(400);
+  });
+
+  it("captures an earlier PayPal order that PayPal confirms we made for this order and total", async () => {
+    getOrderById.mockResolvedValueOnce({ ...fakeOrder, paypalOrderId: "NEWER-PAYPAL-ID" });
+    getPayPalOrder.mockResolvedValueOnce({ referenceId: fakeOrder.id, amountCents: fakeOrder.totalCents });
+    const res = await request(createApp())
+      .post(`/orders/${fakeOrder.id}/capture-payment`)
+      .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+
+    expect(res.status).toBe(200);
+    expect(capturePayPalOrder).toHaveBeenCalledWith("PAYPAL-ORDER-ID");
+  });
+
+  it("400s for a PayPal order made for a different order or amount", async () => {
+    for (const other of [
+      { referenceId: "someone-elses-order", amountCents: fakeOrder.totalCents },
+      { referenceId: fakeOrder.id, amountCents: 1 },
+    ]) {
+      getOrderById.mockResolvedValueOnce({ ...fakeOrder, paypalOrderId: "NEWER-PAYPAL-ID" });
+      getPayPalOrder.mockResolvedValueOnce(other);
+      const res = await request(createApp())
+        .post(`/orders/${fakeOrder.id}/capture-payment`)
+        .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+      expect(res.status).toBe(400);
+    }
+    expect(capturePayPalOrder).not.toHaveBeenCalled();
   });
 
   it("400s when PayPal reports the capture wasn't completed", async () => {
