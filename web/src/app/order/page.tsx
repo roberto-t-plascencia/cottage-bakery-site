@@ -16,6 +16,7 @@ import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
 import { FREE_DELIVERY_MIN_SUBTOTAL_CENTS, deliveryFeeCents } from "@/lib/fees";
 import { formatPhoneInput } from "@/lib/phone";
 import { PayPalCheckoutButton } from "@/components/PayPalCheckoutButton";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 type PaymentMethod = "MANUAL" | "PAYPAL";
 
@@ -333,12 +334,10 @@ export default function OrderPage() {
                 : "Shipping address (must be in California)"
             }
           >
-            <textarea
-              required
+            <AddressAutocomplete
               value={form.fulfillmentAddress}
-              onChange={(e) => updateField("fulfillmentAddress", e.target.value)}
-              className="input"
-              rows={2}
+              onChange={(value) => updateField("fulfillmentAddress", value)}
+              area={form.fulfillmentMethod === "LOCAL_DELIVERY" ? "LOCAL_DELIVERY" : "IN_STATE_SHIPPING"}
             />
           </Field>
         )}
