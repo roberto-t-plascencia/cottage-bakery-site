@@ -60,6 +60,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/products/{id}/sold-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Mark a product sold out for today (bakery date, America/Los_Angeles),
+         *     or clear it. Resets on its own at midnight; orders for later dates
+         *     are unaffected. Admin only.
+         */
+        patch: operations["setProductSoldOut"];
+        trace?: never;
+    };
     "/orders": {
         parameters: {
             query?: never;
@@ -233,6 +254,13 @@ export interface components {
             /** @description Net weight as printed on the label, e.g. "8 oz (226 g)" — a formatted display string, not a numeric quantity to compute with. */
             netWeight: string;
             isActive: boolean;
+            /**
+             * Format: date
+             * @description Bakery date the admin marked this sold out, or null.
+             */
+            soldOutOn: string | null;
+            /** @description True when soldOutOn is today's bakery date. Blocks orders for today only. */
+            soldOutToday: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -392,6 +420,39 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    setProductSoldOut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    soldOutToday: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        product: components["schemas"]["Product"];
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
+            401: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
         };
     };
     listOrders: {

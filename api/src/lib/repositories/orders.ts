@@ -1,4 +1,5 @@
 import { supabase } from "../supabase";
+import { rowToProduct, type ProductRow } from "./products";
 import type {
   NewOrderInput,
   Order,
@@ -7,22 +8,6 @@ import type {
   OrderWithItems,
   PaymentMethod,
 } from "../types";
-
-type ProductRow = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  price_cents: number;
-  category: string;
-  image_url: string | null;
-  allergens: string;
-  ingredients: string;
-  net_weight: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-};
 
 type OrderRow = {
   id: string;
@@ -68,24 +53,6 @@ const ORDER_WITH_ITEMS_SELECT = `
     product:products (*)
   )
 `;
-
-function rowToProduct(row: ProductRow) {
-  return {
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    description: row.description,
-    priceCents: row.price_cents,
-    category: row.category,
-    imageUrl: row.image_url,
-    allergens: row.allergens,
-    ingredients: row.ingredients,
-    netWeight: row.net_weight,
-    isActive: row.is_active,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
 
 // Shared by every function below that reads a bare `orders` row (no
 // items) — factored out once payment fields joined updateOrderStatus's

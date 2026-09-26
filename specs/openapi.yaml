@@ -81,6 +81,50 @@ paths:
                     items:
                       $ref: "#/components/schemas/Product"
 
+  /products/{id}/sold-out:
+    patch:
+      operationId: setProductSoldOut
+      summary: |
+        Mark a product sold out for today (bakery date, America/Los_Angeles),
+        or clear it. Resets on its own at midnight; orders for later dates
+        are unaffected. Admin only.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [soldOutToday]
+              properties:
+                soldOutToday:
+                  type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [product]
+                properties:
+                  product:
+                    $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "401":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+
   /orders:
     post:
       operationId: createOrder
@@ -356,7 +400,7 @@ components:
     Product:
       type: object
       required:
-        [id, slug, name, description, priceCents, category, imageUrl, allergens, ingredients, netWeight, isActive, createdAt, updatedAt]
+        [id, slug, name, description, priceCents, category, imageUrl, allergens, ingredients, netWeight, isActive, soldOutOn, soldOutToday, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -384,6 +428,13 @@ components:
           description: Net weight as printed on the label, e.g. "8 oz (226 g)" — a formatted display string, not a numeric quantity to compute with.
         isActive:
           type: boolean
+        soldOutOn:
+          type: [string, "null"]
+          format: date
+          description: Bakery date the admin marked this sold out, or null.
+        soldOutToday:
+          type: boolean
+          description: True when soldOutOn is today's bakery date. Blocks orders for today only.
         createdAt:
           type: string
           format: date-time

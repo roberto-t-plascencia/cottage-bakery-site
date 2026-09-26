@@ -13,10 +13,11 @@ import { getEnv } from "./env";
  * which one; anything other than exactly "live" defaults to sandbox, so
  * a missing/misspelled env var fails safe (never accidentally live).
  */
+// Trimmed and lowercased, so "Live" or a value pasted with a trailing
+// space still means live. Anything else is still sandbox.
+const PAYPAL_MODE = process.env.PAYPAL_ENV?.trim().toLowerCase() === "live" ? "live" : "sandbox";
 const PAYPAL_API_BASE =
-  process.env.PAYPAL_ENV === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
+  PAYPAL_MODE === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 
 type AccessTokenCache = { token: string; expiresAt: number } | null;
 let tokenCache: AccessTokenCache = null;
@@ -48,7 +49,12 @@ async function getAccessToken(): Promise<string> {
   });
 
   if (!res.ok) {
-    throw new Error(`PayPal OAuth token request failed: ${res.status} ${await res.text()}`);
+    // Name the mode: a 401 here almost always means the Client ID and
+    // Secret don't belong to this mode's app (live keys on sandbox or the
+    // reverse), or the ID and Secret come from two different apps.
+    throw new Error(
+      `PayPal OAuth token request failed (${PAYPAL_MODE}, PAYPAL_ENV=${process.env.PAYPAL_ENV ?? "unset"}): ${res.status} ${await res.text()}`
+    );
   }
 
   const data = (await res.json()) as { access_token: string; expires_in: number };

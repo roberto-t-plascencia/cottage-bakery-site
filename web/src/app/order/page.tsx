@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/CartContext";
 import {
+  bakeryCalendarDate,
   cartSubtotalCents,
   earliestReadyDate,
   formatCents,
@@ -13,7 +14,9 @@ import {
 } from "@/lib/cart";
 import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
 import { FREE_DELIVERY_MIN_SUBTOTAL_CENTS, deliveryFeeCents } from "@/lib/fees";
+import { formatPhoneInput } from "@/lib/phone";
 import { PayPalCheckoutButton } from "@/components/PayPalCheckoutButton";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 type PaymentMethod = "MANUAL" | "PAYPAL";
 
@@ -57,9 +60,29 @@ export default function OrderPage() {
   const [pendingTotalCents, setPendingTotalCents] = useState<number | null>(null);
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
 
+  // Items the bakery marked sold out for today (admin switch). They can
+  // still be ordered for tomorrow or later; api/ enforces the same rule.
+  const [soldOutToday, setSoldOutToday] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch("/api/products/sold-out")
+      .then((res) => (res.ok ? res.json() : { products: [] }))
+      .then((data) => setSoldOutToday(data.products ?? []))
+      .catch(() => {});
+  }, []);
+  const soldOutInCart = soldOutToday.filter((p) => cart.some((line) => line.productId === p.id));
+
   // Depends on the fulfillment method: same-day delivery stays open
   // later than same-day pickup (see sameDayCutoffMinutes in lib/cart.ts).
-  const minDate = toDateInputValue(earliestReadyDate(form.fulfillmentMethod));
+  // A sold-out item in the cart pushes it to tomorrow at the earliest.
+  function minDateFor(method: FulfillmentOptionId): string {
+    const earliest = toDateInputValue(earliestReadyDate(method));
+    if (soldOutInCart.length === 0) return earliest;
+    const tomorrow = bakeryCalendarDate();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowValue = toDateInputValue(tomorrow);
+    return earliest > tomorrowValue ? earliest : tomorrowValue;
+  }
+  const minDate = minDateFor(form.fulfillmentMethod);
   const sameDayCutoff = formatCutoff(sameDayCutoffMinutes(form.fulfillmentMethod));
 
   const subtotal = cartSubtotalCents(cart);
@@ -258,8 +281,13 @@ export default function OrderPage() {
           <input
             required
             type="tel"
+            inputMode="tel"
+            autoComplete="tel-national"
+            placeholder="(858) 555-0123"
+            pattern="\(\d{3}\) \d{3}-\d{4}"
+            title="10-digit phone number, like (858) 373-9363"
             value={form.customerPhone}
-            onChange={(e) => updateField("customerPhone", e.target.value)}
+            onChange={(e) => updateField("customerPhone", formatPhoneInput(e.target.value))}
             className="input"
           />
         </Field>
@@ -269,7 +297,7 @@ export default function OrderPage() {
             value={form.fulfillmentMethod}
             onChange={(e) => {
               const method = e.target.value as FulfillmentOptionId;
-              const newMin = toDateInputValue(earliestReadyDate(method));
+              const newMin = minDateFor(method);
               // Switching to a method whose same-day window has already
               // closed moves a now-too-early date up, instead of letting
               // the server reject it on submit. Date-only strings compare
@@ -306,12 +334,10 @@ export default function OrderPage() {
                 : "Shipping address (must be in California)"
             }
           >
-            <textarea
-              required
+            <AddressAutocomplete
               value={form.fulfillmentAddress}
-              onChange={(e) => updateField("fulfillmentAddress", e.target.value)}
-              className="input"
-              rows={2}
+              onChange={(value) => updateField("fulfillmentAddress", value)}
+              area={form.fulfillmentMethod === "LOCAL_DELIVERY" ? "LOCAL_DELIVERY" : "IN_STATE_SHIPPING"}
             />
           </Field>
         )}
@@ -328,6 +354,13 @@ export default function OrderPage() {
           <p className="mt-1 text-xs text-black/50 dark:text-white/50">
             Earliest available: {minDate}. Same-day orders close at {sameDayCutoff}.
           </p>
+          {soldOutInCart.length > 0 && (
+            <p className="mt-1 text-xs text-red-700 dark:text-red-400">
+              {soldOutInCart.map((p) => p.name).join(", ")}{" "}
+              {soldOutInCart.length === 1 ? "is" : "are"} sold out for today, so the
+              earliest date is tomorrow.
+            </p>
+          )}
         </Field>
 
         <Field label="Notes (optional)">

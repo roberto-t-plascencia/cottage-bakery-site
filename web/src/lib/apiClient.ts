@@ -93,6 +93,13 @@ export const apiClient = {
       token,
     }).then((r) => r.order),
 
+  setProductSoldOut: (id: string, soldOutToday: boolean, token: string) =>
+    apiFetch<{ product: Product }>(`/products/${id}/sold-out`, {
+      method: "PATCH",
+      body: { soldOutToday },
+      token,
+    }).then((r) => r.product),
+
   adminLogin: (password: string) =>
     apiFetch<{ token: string }>("/admin/login", { method: "POST", body: { password } }),
 

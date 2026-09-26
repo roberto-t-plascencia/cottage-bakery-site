@@ -13,8 +13,9 @@ import {
 import { capturePayPalOrder, createPayPalOrder } from "../lib/paypal";
 import { validateOrder } from "../lib/orders";
 import { sendOrderReceivedEmail, sendPaymentConfirmedEmail } from "../lib/email";
-import { parseDateOnly } from "../lib/cart";
+import { bakeryToday, parseDateOnly } from "../lib/cart";
 import { deliveryFeeCents } from "../lib/fees";
+import { normalizeUsPhone } from "../lib/phone";
 import { requireAdmin } from "../middleware/requireAdmin";
 import type { OrderStatus } from "../lib/types";
 
@@ -80,6 +81,19 @@ ordersRouter.post("/", async (req, res) => {
     return;
   }
 
+  // "Sold out today" only blocks today's date; later dates are fine.
+  if (body.requestedDate === bakeryToday()) {
+    const soldOut = products.filter((p) => p.soldOutToday).map((p) => p.name);
+    if (soldOut.length > 0) {
+      res.status(400).json({
+        errors: [
+          `${soldOut.join(", ")} ${soldOut.length === 1 ? "is" : "are"} sold out for today. Please pick tomorrow or later.`,
+        ],
+      });
+      return;
+    }
+  }
+
   const cartLines = body.items.map((item) => {
     const product = productById.get(item.productId)!;
     return {
@@ -120,7 +134,8 @@ ordersRouter.post("/", async (req, res) => {
   const order = await createOrder({
     customerName: body.customerName,
     customerEmail: body.customerEmail,
-    customerPhone: body.customerPhone,
+    // Validated above, so this is never the fallback.
+    customerPhone: normalizeUsPhone(body.customerPhone) ?? body.customerPhone,
     fulfillmentMethod: body.fulfillmentMethod,
     fulfillmentAddress: body.fulfillmentAddress || null,
     // The client's original "YYYY-MM-DD" string, passed straight through
