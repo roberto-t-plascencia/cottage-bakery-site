@@ -31,4 +31,21 @@ describe("createPayPalOrder", () => {
     });
     expect(body.application_context.shipping_preference).toBe("NO_SHIPPING");
   });
+
+  it("reads which of our orders a PayPal order belongs to, and its amount", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        url.endsWith("/v1/oauth2/token")
+          ? new Response(JSON.stringify({ access_token: "token", expires_in: 3600 }))
+          : new Response(
+              JSON.stringify({
+                purchase_units: [{ reference_id: "order-1", amount: { currency_code: "USD", value: "20.97" } }],
+              })
+            )
+      )
+    );
+    const { getPayPalOrder } = await import("../../src/lib/paypal");
+    expect(await getPayPalOrder("PAYPAL-ORDER-ID")).toEqual({ referenceId: "order-1", amountCents: 2097 });
+  });
 });
