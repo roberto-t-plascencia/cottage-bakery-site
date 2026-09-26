@@ -1,5 +1,5 @@
 import { bakeryConfig } from "./config";
-import { earliestReadyDate, type CartLine } from "./cart";
+import { earliestReadyDate, formatCutoff, sameDayCutoffMinutes, type CartLine } from "./cart";
 import type { FulfillmentMethod } from "./types";
 
 export type { FulfillmentMethod };
@@ -63,13 +63,13 @@ export function validateOrder(input: OrderInput): ValidationResult {
     );
   }
 
-  const minDate = earliestReadyDate();
+  const minDate = earliestReadyDate(input.fulfillmentMethod);
   minDate.setHours(0, 0, 0, 0);
   const requested = new Date(input.requestedDate);
   requested.setHours(0, 0, 0, 0);
   if (requested.getTime() < minDate.getTime()) {
     errors.push(
-      `Requested date must be at least ${minDate.toDateString()} to allow baking lead time.`
+      `Requested date must be ${minDate.toDateString()} or later (same-day orders close at ${formatCutoff(sameDayCutoffMinutes(input.fulfillmentMethod))}).`
     );
   }
 

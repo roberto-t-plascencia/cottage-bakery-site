@@ -198,7 +198,7 @@ paths:
       operationId: createPayPalOrderForOrder
       summary: |
         Starts a PayPal Checkout for an existing order — creates a
-        PayPal order sized to this order's own `subtotalCents` (never a
+        PayPal order sized to this order's own `totalCents` (never a
         client-supplied amount) and returns PayPal's order id for the
         PayPal JS SDK to use client-side. See
         docs/adr/0006-online-payment-paypal.md.
@@ -415,7 +415,7 @@ components:
     Order:
       type: object
       required:
-        [id, customerName, customerEmail, customerPhone, fulfillmentMethod, fulfillmentAddress, requestedDate, notes, status, subtotalCents, paymentMethod, paymentStatus, paypalOrderId, createdAt, updatedAt]
+        [id, customerName, customerEmail, customerPhone, fulfillmentMethod, fulfillmentAddress, requestedDate, notes, status, subtotalCents, deliveryFeeCents, totalCents, paymentMethod, paymentStatus, paypalOrderId, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -442,6 +442,12 @@ components:
           $ref: "#/components/schemas/OrderStatus"
         subtotalCents:
           type: integer
+        deliveryFeeCents:
+          type: integer
+          description: Computed server-side at order creation (never taken from the request). 0 for pickup, shipping, and deliveries at or above the free-delivery threshold. See docs/adr/0008-delivery-fee.md.
+        totalCents:
+          type: integer
+          description: subtotalCents + deliveryFeeCents. What the customer owes, and what a PayPal order is created for.
         paymentMethod:
           $ref: "#/components/schemas/PaymentMethod"
         paymentStatus:

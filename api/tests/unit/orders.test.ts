@@ -92,12 +92,13 @@ describe("validateOrder", () => {
     }
   });
 
-  it("rejects a requested date before the minimum lead time", () => {
-    const tooSoon = new Date();
-    const result = validateOrder(baseInput({ requestedDate: tooSoon }));
+  it("rejects a requested date in the past", () => {
+    const yesterday = earliestReadyDate();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const result = validateOrder(baseInput({ requestedDate: yesterday }));
     expect(result.valid).toBe(false);
     if (!result.valid) {
-      expect(result.errors.some((e) => e.includes("baking lead time"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("or later"))).toBe(true);
     }
   });
 });

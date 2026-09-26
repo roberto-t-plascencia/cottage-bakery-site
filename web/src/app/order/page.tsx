@@ -7,9 +7,12 @@ import {
   cartSubtotalCents,
   earliestReadyDate,
   formatCents,
+  formatCutoff,
+  sameDayCutoffMinutes,
   toDateInputValue,
 } from "@/lib/cart";
 import { bakeryConfig, type FulfillmentOptionId } from "@/lib/config";
+import { FREE_DELIVERY_MIN_SUBTOTAL_CENTS, deliveryFeeCents } from "@/lib/fees";
 import { PayPalCheckoutButton } from "@/components/PayPalCheckoutButton";
 
 type PaymentMethod = "MANUAL" | "PAYPAL";
@@ -28,7 +31,7 @@ type FormState = {
 export default function OrderPage() {
   const router = useRouter();
   const { cart, remove, setQuantity, clear } = useCart();
-  const minDate = useMemo(() => toDateInputValue(earliestReadyDate()), []);
+  const initialMinDate = useMemo(() => toDateInputValue(earliestReadyDate("PICKUP")), []);
 
   const [form, setForm] = useState<FormState>({
     customerName: "",
@@ -36,7 +39,7 @@ export default function OrderPage() {
     customerPhone: "",
     fulfillmentMethod: "PICKUP",
     fulfillmentAddress: "",
-    requestedDate: minDate,
+    requestedDate: initialMinDate,
     notes: "",
     paymentMethod: "MANUAL",
   });
@@ -49,9 +52,22 @@ export default function OrderPage() {
   // until payment actually succeeds (onCaptured, below), so a buyer who
   // backs out mid-payment hasn't lost their cart.
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  // The server's total for the created order (subtotal + its own
+  // delivery fee), shown on the PayPal step instead of re-deriving it.
+  const [pendingTotalCents, setPendingTotalCents] = useState<number | null>(null);
   const [paypalClientId, setPaypalClientId] = useState<string | null>(null);
 
+  // Depends on the fulfillment method: same-day delivery stays open
+  // later than same-day pickup (see sameDayCutoffMinutes in lib/cart.ts).
+  const minDate = toDateInputValue(earliestReadyDate(form.fulfillmentMethod));
+  const sameDayCutoff = formatCutoff(sameDayCutoffMinutes(form.fulfillmentMethod));
+
   const subtotal = cartSubtotalCents(cart);
+  const isDelivery = form.fulfillmentMethod === "LOCAL_DELIVERY";
+  // Display only: api/ computes the fee that's actually charged (see
+  // src/lib/fees.ts).
+  const deliveryFee = deliveryFeeCents(form.fulfillmentMethod, subtotal);
+  const total = subtotal + deliveryFee;
   const needsAddress =
     form.fulfillmentMethod === "LOCAL_DELIVERY" ||
     form.fulfillmentMethod === "IN_STATE_SHIPPING";
@@ -103,6 +119,7 @@ export default function OrderPage() {
       }
       setPaypalClientId(configData.paypalClientId);
       setPendingOrderId(data.order.id);
+      setPendingTotalCents(data.order.totalCents);
       setSubmitting(false);
     } catch {
       setErrors(["Network error — please check your connection and try again."]);
@@ -116,7 +133,7 @@ export default function OrderPage() {
         <h1 className="text-3xl font-bold tracking-tight">Pay with PayPal</h1>
         <p className="mt-4 text-black/70 dark:text-white/70">
           Your order has been created. Complete payment below to confirm it —{" "}
-          {formatCents(subtotal)} total.
+          {formatCents(pendingTotalCents ?? total)} total.
         </p>
         <div className="mt-8">
           <PayPalCheckoutButton
@@ -184,9 +201,26 @@ export default function OrderPage() {
         ))}
       </ul>
 
-      <div className="mt-4 flex justify-between border-t border-black/10 pt-4 font-semibold dark:border-white/10">
-        <span>Subtotal</span>
-        <span>{formatCents(subtotal)}</span>
+      <div className="mt-4 space-y-2 border-t border-black/10 pt-4 dark:border-white/10">
+        <div className="flex justify-between">
+          <span>Subtotal</span>
+          <span>{formatCents(subtotal)}</span>
+        </div>
+        {isDelivery && (
+          <div className="flex justify-between">
+            <span>Delivery</span>
+            <span>{deliveryFee === 0 ? "Free" : formatCents(deliveryFee)}</span>
+          </div>
+        )}
+        <div className="flex justify-between font-semibold">
+          <span>Total</span>
+          <span>{formatCents(total)}</span>
+        </div>
+        {isDelivery && deliveryFee > 0 && (
+          <p className="text-sm text-black/60 dark:text-white/60">
+            Add {formatCents(FREE_DELIVERY_MIN_SUBTOTAL_CENTS - subtotal)} more for free delivery.
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-10 space-y-5">
@@ -233,12 +267,20 @@ export default function OrderPage() {
         <Field label="Fulfillment">
           <select
             value={form.fulfillmentMethod}
-            onChange={(e) =>
-              updateField(
-                "fulfillmentMethod",
-                e.target.value as FulfillmentOptionId
-              )
-            }
+            onChange={(e) => {
+              const method = e.target.value as FulfillmentOptionId;
+              const newMin = toDateInputValue(earliestReadyDate(method));
+              // Switching to a method whose same-day window has already
+              // closed moves a now-too-early date up, instead of letting
+              // the server reject it on submit. Date-only strings compare
+              // correctly as plain strings.
+              setForm((prev) => ({
+                ...prev,
+                fulfillmentMethod: method,
+                requestedDate:
+                  prev.requestedDate < newMin ? newMin : prev.requestedDate,
+              }));
+            }}
             className="input"
           >
             {bakeryConfig.fulfillmentOptions.map((opt) => (
@@ -284,7 +326,7 @@ export default function OrderPage() {
             className="input"
           />
           <p className="mt-1 text-xs text-black/50 dark:text-white/50">
-            Earliest available: {minDate}
+            Earliest available: {minDate}. Same-day orders close at {sameDayCutoff}.
           </p>
         </Field>
 

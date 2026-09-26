@@ -79,9 +79,13 @@ refuses it":
   loose substring check, not a real address-verification API call — see
   the code comment for why, and what to tighten if the business scales
   past hand-checking every order before confirming it.
-- Every order requires at least `MIN_LEAD_TIME_DAYS` of lead time
-  (`src/lib/cart.ts`), so the form can't be used to demand same-day
-  baking. This isn't a legal requirement — it's an operational one, kept
+- ~~Every order requires at least `MIN_LEAD_TIME_DAYS` of lead time.~~
+  *Superseded 2026-09-25:* same-day orders are allowed until a
+  per-method cutoff (8 PM for pickup and shipping, 9:30 PM for local
+  delivery, America/Los_Angeles), after which the earliest ready date is
+  tomorrow (`sameDayCutoffMinutes` in `src/lib/cart.ts`); running out of
+  a product for the day is handled per product instead.
+  The ready-date rule isn't a legal requirement — it's an operational one, kept
   here because the checkout form and the server-side validator both need
   the same definition of "earliest possible ready date," and duplicating
   the constant in two places is how they drift apart.

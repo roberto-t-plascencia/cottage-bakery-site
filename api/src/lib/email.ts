@@ -80,6 +80,19 @@ function itemsRowsHtml(order: OrderWithItems): string {
     .join("");
 }
 
+// Only local-delivery orders get a delivery line at all; one that
+// qualified for free delivery says so, rather than silently omitting
+// the line and leaving the customer wondering whether they were charged.
+function deliveryFeeRowHtml(order: Order): string {
+  if (order.fulfillmentMethod !== "LOCAL_DELIVERY") return "";
+  const value = order.deliveryFeeCents === 0 ? "Free" : formatCents(order.deliveryFeeCents);
+  return `
+        <tr>
+          <td style="padding-top:4px;">Delivery</td>
+          <td style="padding-top:4px;text-align:right;">${value}</td>
+        </tr>`;
+}
+
 const FULFILLMENT_LABEL: Record<OrderWithItems["fulfillmentMethod"], string> = {
   PICKUP: "Pickup",
   LOCAL_DELIVERY: "Local delivery",
@@ -105,8 +118,13 @@ export async function sendOrderReceivedEmail(order: OrderWithItems): Promise<voi
       <table style="width:100%;border-collapse:collapse;margin:16px 0;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:8px 0;">
         ${itemsRowsHtml(order)}
         <tr>
-          <td style="padding-top:8px;font-weight:bold;">Subtotal</td>
-          <td style="padding-top:8px;font-weight:bold;text-align:right;">${formatCents(order.subtotalCents)}</td>
+          <td style="padding-top:8px;">Subtotal</td>
+          <td style="padding-top:8px;text-align:right;">${formatCents(order.subtotalCents)}</td>
+        </tr>
+        ${deliveryFeeRowHtml(order)}
+        <tr>
+          <td style="padding-top:4px;font-weight:bold;">Total</td>
+          <td style="padding-top:4px;font-weight:bold;text-align:right;">${formatCents(order.totalCents)}</td>
         </tr>
       </table>
       <p style="color:#444;">
@@ -134,7 +152,7 @@ export async function sendPaymentConfirmedEmail(order: Order): Promise<void> {
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
       <h2 style="margin-bottom:4px;">Payment received — thanks, ${order.customerName}!</h2>
       <p style="color:#444;">
-        We've confirmed your PayPal payment of <strong>${formatCents(order.subtotalCents)}</strong>
+        We've confirmed your PayPal payment of <strong>${formatCents(order.totalCents)}</strong>
         for order #${shortOrderId(order.id)}.
       </p>
       <p style="color:#444;">Requested date: ${formatDateOnly(order.requestedDate)}</p>

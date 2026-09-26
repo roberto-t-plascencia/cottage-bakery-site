@@ -32,7 +32,7 @@ export const bakeryConfig = {
     {
       id: "LOCAL_DELIVERY",
       label: "Local delivery",
-      description: "Delivered within the service county for a flat fee.",
+      description: "$3 delivery within the service county, free on orders of $25 or more.",
     },
     {
       id: "IN_STATE_SHIPPING",

@@ -22,6 +22,8 @@ const fakeOrder = {
   notes: null,
   status: "PENDING" as const,
   subtotalCents: 2200,
+  deliveryFeeCents: 0,
+  totalCents: 2200,
   paymentMethod: "MANUAL" as const,
   paymentStatus: "UNPAID" as PaymentStatus,
   paypalOrderId: "PAYPAL-ORDER-ID" as string | null,

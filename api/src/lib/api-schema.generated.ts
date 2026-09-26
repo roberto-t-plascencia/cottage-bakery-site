@@ -137,7 +137,7 @@ export interface paths {
         put?: never;
         /**
          * Starts a PayPal Checkout for an existing order — creates a
-         *     PayPal order sized to this order's own `subtotalCents` (never a
+         *     PayPal order sized to this order's own `totalCents` (never a
          *     client-supplied amount) and returns PayPal's order id for the
          *     PayPal JS SDK to use client-side. See
          *     docs/adr/0006-online-payment-paypal.md.
@@ -267,6 +267,10 @@ export interface components {
             notes: string | null;
             status: components["schemas"]["OrderStatus"];
             subtotalCents: number;
+            /** @description Computed server-side at order creation (never taken from the request). 0 for pickup, shipping, and deliveries at or above the free-delivery threshold. See docs/adr/0008-delivery-fee.md. */
+            deliveryFeeCents: number;
+            /** @description subtotalCents + deliveryFeeCents. What the customer owes, and what a PayPal order is created for. */
+            totalCents: number;
             paymentMethod: components["schemas"]["PaymentMethod"];
             paymentStatus: components["schemas"]["PaymentStatus"];
             /** @description Set once a PayPal Checkout has been started for this order (see POST /orders/{id}/paypal-order). Null for a MANUAL order, or a PAYPAL order for which checkout hasn't started yet. */

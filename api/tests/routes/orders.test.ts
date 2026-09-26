@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
-import type { PaymentStatus } from "../../src/lib/types";
+import type { FulfillmentMethod, PaymentStatus } from "../../src/lib/types";
 
 // Route tests exercise HTTP behavior (status codes, the error envelope,
 // auth enforcement) against the real Express app — but never a real
@@ -32,12 +32,14 @@ const fakeOrder = {
   customerName: "Jane Baker",
   customerEmail: "jane@example.com",
   customerPhone: "555-123-4567",
-  fulfillmentMethod: "PICKUP" as const,
+  fulfillmentMethod: "PICKUP" as FulfillmentMethod,
   fulfillmentAddress: null,
   requestedDate: "2099-01-05",
   notes: null,
   status: "PENDING" as const,
   subtotalCents: 2200,
+  deliveryFeeCents: 0,
+  totalCents: 2200,
   paymentMethod: "MANUAL" as const,
   paymentStatus: "UNPAID" as PaymentStatus,
   paypalOrderId: null as string | null,
@@ -69,10 +71,11 @@ const markOrderPaid = vi.fn(async (id: string, paypalOrderId: string) =>
     ? { ...fakeOrder, status: "CONFIRMED", paymentStatus: "PAID", paypalOrderId }
     : null
 );
+const createOrder = vi.fn(async (_input: { deliveryFeeCents: number }) => ({ ...fakeOrder }));
 const getOrderById = vi.fn(async (id: string) => (id === fakeOrder.id ? fakeOrder : null));
 
 vi.mock("../../src/lib/repositories/orders", () => ({
-  createOrder: vi.fn(async () => ({ ...fakeOrder })),
+  createOrder: (...args: [{ deliveryFeeCents: number }]) => createOrder(...args),
   getOrderById: (...args: [string]) => getOrderById(...args),
   listOrders: vi.fn(async () => [fakeOrder]),
   updateOrderStatus: vi.fn(async (id: string, status: string) =>
@@ -97,6 +100,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   getOrderById.mockClear();
+  createOrder.mockClear();
   getOrderById.mockImplementation(async (id: string) => (id === fakeOrder.id ? fakeOrder : null));
   createPayPalOrder.mockClear();
   capturePayPalOrder.mockClear();
@@ -123,6 +127,32 @@ describe("POST /orders", () => {
     expect(res.status).toBe(201);
     expect(res.body.order.id).toBe(fakeOrder.id);
     expect(res.body.order.paymentMethod).toBe("MANUAL");
+  });
+
+  it("computes the local-delivery fee server-side from its own subtotal", async () => {
+    const app = createApp();
+    const delivery = (quantity: number) =>
+      request(app)
+        .post("/orders")
+        .send({
+          customerName: "Jane Baker",
+          customerEmail: "jane@example.com",
+          customerPhone: "555-123-4567",
+          fulfillmentMethod: "LOCAL_DELIVERY",
+          fulfillmentAddress: "123 Main St, San Diego, CA 92108",
+          requestedDate: "2099-01-05",
+          items: [{ productId: products[0].id, quantity }],
+          // Anything the client sends about fees must be ignored.
+          deliveryFeeCents: 0,
+        });
+
+    // 1 x $22.00 is under the $25 threshold: fee applies.
+    expect((await delivery(1)).status).toBe(201);
+    expect(createOrder).toHaveBeenLastCalledWith(expect.objectContaining({ deliveryFeeCents: 300 }));
+
+    // 2 x $22.00 clears it: free delivery.
+    expect((await delivery(2)).status).toBe(201);
+    expect(createOrder).toHaveBeenLastCalledWith(expect.objectContaining({ deliveryFeeCents: 0 }));
   });
 
   it("returns the standard error envelope for an empty cart", async () => {
@@ -249,13 +279,27 @@ describe("PATCH /orders/:id/status (admin)", () => {
 });
 
 describe("POST /orders/:id/paypal-order", () => {
-  it("creates a PayPal order sized to the order's own subtotal", async () => {
+  it("creates a PayPal order sized to the order's own total", async () => {
     const app = createApp();
     const res = await request(app).post(`/orders/${fakeOrder.id}/paypal-order`).send();
 
     expect(res.status).toBe(200);
     expect(res.body.paypalOrderId).toBe("PAYPAL-ORDER-ID");
-    expect(createPayPalOrder).toHaveBeenCalledWith(fakeOrder.subtotalCents, fakeOrder.id);
+    expect(createPayPalOrder).toHaveBeenCalledWith(fakeOrder.totalCents, fakeOrder.id);
+  });
+
+  it("includes the stored delivery fee in the PayPal amount", async () => {
+    getOrderById.mockResolvedValueOnce({
+      ...fakeOrder,
+      fulfillmentMethod: "LOCAL_DELIVERY",
+      deliveryFeeCents: 300,
+      totalCents: 2500,
+    });
+    const app = createApp();
+    const res = await request(app).post(`/orders/${fakeOrder.id}/paypal-order`).send();
+
+    expect(res.status).toBe(200);
+    expect(createPayPalOrder).toHaveBeenCalledWith(2500, fakeOrder.id);
   });
 
   it("404s for an order that doesn't exist", async () => {

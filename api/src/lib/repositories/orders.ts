@@ -35,6 +35,7 @@ type OrderRow = {
   notes: string | null;
   status: string;
   subtotal_cents: number;
+  delivery_fee_cents: number;
   payment_method: string;
   payment_status: string;
   paypal_order_id: string | null;
@@ -102,6 +103,8 @@ function rowToOrder(row: OrderRow): Order {
     notes: row.notes,
     status: row.status as OrderStatus,
     subtotalCents: row.subtotal_cents,
+    deliveryFeeCents: row.delivery_fee_cents,
+    totalCents: row.subtotal_cents + row.delivery_fee_cents,
     paymentMethod: row.payment_method as Order["paymentMethod"],
     paymentStatus: row.payment_status as Order["paymentStatus"],
     paypalOrderId: row.paypal_order_id,
@@ -146,6 +149,7 @@ export async function createOrder(input: NewOrderInput): Promise<OrderWithItems>
     p_requested_date: input.requestedDate,
     p_notes: input.notes,
     p_subtotal_cents: input.subtotalCents,
+    p_delivery_fee_cents: input.deliveryFeeCents,
     p_items: input.items.map((item) => ({
       product_id: item.productId,
       quantity: item.quantity,

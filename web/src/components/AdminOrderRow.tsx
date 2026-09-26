@@ -16,6 +16,8 @@ export type AdminOrderRowData = {
   notes: string | null;
   status: OrderStatus;
   subtotalCents: number;
+  deliveryFeeCents: number;
+  totalCents: number;
   items: { name: string; quantity: number }[];
 };
 
@@ -67,7 +69,12 @@ export function AdminOrderRow({ order }: { order: AdminOrderRowData }) {
             </li>
           ))}
         </ul>
-        <p className="mt-1 font-medium">{formatCents(order.subtotalCents)}</p>
+        <p className="mt-1 font-medium">{formatCents(order.totalCents)}</p>
+        {order.deliveryFeeCents > 0 && (
+          <p className="text-black/60 dark:text-white/60">
+            incl. {formatCents(order.deliveryFeeCents)} delivery
+          </p>
+        )}
       </td>
       <td className="py-4 pr-4">
         <p>{order.fulfillmentMethod.replace("_", " ")}</p>

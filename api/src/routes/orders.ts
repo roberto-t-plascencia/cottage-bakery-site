@@ -14,6 +14,7 @@ import { capturePayPalOrder, createPayPalOrder } from "../lib/paypal";
 import { validateOrder } from "../lib/orders";
 import { sendOrderReceivedEmail, sendPaymentConfirmedEmail } from "../lib/email";
 import { parseDateOnly } from "../lib/cart";
+import { deliveryFeeCents } from "../lib/fees";
 import { requireAdmin } from "../middleware/requireAdmin";
 import type { OrderStatus } from "../lib/types";
 
@@ -112,6 +113,9 @@ ordersRouter.post("/", async (req, res) => {
   }
 
   const subtotalCents = cartLines.reduce((sum, line) => sum + line.unitPriceCents * line.quantity, 0);
+  // Computed from the server-side subtotal above, never taken from the
+  // request — same rule as prices. See docs/adr/0008-delivery-fee.md.
+  const feeCents = deliveryFeeCents(body.fulfillmentMethod, subtotalCents);
 
   const order = await createOrder({
     customerName: body.customerName,
@@ -126,6 +130,7 @@ ordersRouter.post("/", async (req, res) => {
     requestedDate: body.requestedDate,
     notes: body.notes || null,
     subtotalCents,
+    deliveryFeeCents: feeCents,
     items: cartLines.map((line) => ({
       productId: line.productId,
       quantity: line.quantity,
@@ -188,7 +193,8 @@ ordersRouter.patch("/:id/status", requireAdmin, async (req, res) => {
 
 // POST /orders/:id/paypal-order — public, same trust model as
 // GET /orders/:id (the uuid order id is the access control). Creates a
-// PayPal order sized to *this* order's own subtotal_cents — the amount
+// PayPal order sized to *this* order's own stored total (subtotal plus
+// delivery fee, see docs/adr/0008-delivery-fee.md) — the amount
 // is never taken from the request, so a tampered client can't create a
 // PayPal order for less than what's actually owed. See
 // docs/adr/0006-online-payment-paypal.md.
@@ -203,7 +209,7 @@ ordersRouter.post("/:id/paypal-order", async (req, res) => {
     return;
   }
 
-  const paypalOrderId = await createPayPalOrder(order.subtotalCents, order.id);
+  const paypalOrderId = await createPayPalOrder(order.totalCents, order.id);
   await setOrderPayPalOrderId(order.id, paypalOrderId);
   res.json({ paypalOrderId });
 });

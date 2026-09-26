@@ -64,7 +64,7 @@ async function getAccessToken(): Promise<string> {
 /**
  * Creates a PayPal order for the given amount. Called only after this
  * service has already created (and priced) its own order record — the
- * amount always comes from our own subtotal_cents, never anything the
+ * amount always comes from our own stored order total, never anything the
  * client sends, for the same reason POST /orders looks up prices
  * server-side (see routes/orders.ts).
  */

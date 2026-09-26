@@ -16,8 +16,8 @@ export const bakeryConfig = {
   zip: "92108",
   county: "San Diego",
   registrationNumber: "DEH2026-FCFO-002557",
-  contactEmail: "hello@example.com",
-  contactPhone: "(555) 555-5555",
+  contactEmail: "robplascencia@gmail.com",
+  contactPhone: "(858) 373-9363",
   instagramHandle: "@yourcottagebakery",
   serviceCounty: "San Diego",
   // Class A CFOs may only ship/deliver directly to consumers within
@@ -25,7 +25,7 @@ export const bakeryConfig = {
   shippableState: "CA",
   fulfillmentOptions: [
     { id: "PICKUP", label: "Pickup", description: "Free pickup from the home kitchen, by appointment." },
-    { id: "LOCAL_DELIVERY", label: "Local delivery", description: "Delivered within the service county for a flat fee." },
+    { id: "LOCAL_DELIVERY", label: "Local delivery", description: "$3 delivery within the service county, free on orders of $25 or more." },
     {
       id: "IN_STATE_SHIPPING",
       label: "Shipping (within California only)",
