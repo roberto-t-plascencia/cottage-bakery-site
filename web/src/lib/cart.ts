@@ -71,9 +71,36 @@ export function formatCents(cents: number): string {
  * definition instead of drifting apart.
  */
 export function earliestReadyDate(from: Date = new Date()): Date {
-  const result = new Date(from);
+  const result = bakeryCalendarDate(from);
   result.setDate(result.getDate() + MIN_LEAD_TIME_DAYS);
   return result;
+}
+
+/**
+ * The bakery's timezone: every "which day is it?" question in this rule
+ * is answered here, never in whatever timezone the code happens to run
+ * in. Before this, the browser counted days in the customer's local time
+ * while api/ (on Vercel) counted in UTC, so from 5 PM Pacific onward —
+ * already "tomorrow" in UTC — the server demanded one more day of lead
+ * time than the checkout form offered, and every order placed that
+ * evening was rejected as "too soon."
+ */
+export const BAKERY_TIME_ZONE = "America/Los_Angeles";
+
+/**
+ * The calendar date it currently is at the bakery, as a Date at *local*
+ * midnight of that date — the same shape parseDateOnly returns, so the
+ * lead-time comparison compares like with like in any runtime timezone.
+ */
+export function bakeryCalendarDate(now: Date = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: BAKERY_TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(now);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)!.value);
+  return new Date(get("year"), get("month") - 1, get("day"));
 }
 
 /**

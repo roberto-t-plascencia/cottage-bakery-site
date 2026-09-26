@@ -10,7 +10,6 @@ import {
   removeFromCart,
   toDateInputValue,
   updateQuantity,
-  MIN_LEAD_TIME_DAYS,
   type CartLine,
 } from "@/lib/cart";
 
@@ -95,14 +94,18 @@ describe("formatCents", () => {
 });
 
 describe("earliestReadyDate", () => {
-  it("adds the minimum lead time to the given date", () => {
-    // Built from local components (not a "Z"-suffixed ISO string) since
-    // earliestReadyDate uses local-time setDate/getDate — an ISO UTC
-    // midnight can land on the previous local day depending on timezone,
-    // which would make this assertion flaky across environments.
-    const from = new Date(2026, 0, 1); // Jan 1, 2026, local midnight
-    const result = earliestReadyDate(from);
-    expect(result.getDate()).toBe(1 + MIN_LEAD_TIME_DAYS);
+  // Exact instants ("Z" timestamps), since the rule now counts days in
+  // the bakery's timezone regardless of where the test runs.
+  it("adds the minimum lead time to the bakery's current date", () => {
+    const from = new Date("2026-01-01T20:00:00Z"); // noon, Jan 1, in San Diego
+    expect(toDateInputValue(earliestReadyDate(from))).toBe("2026-01-03");
+  });
+
+  it("counts from the bakery's date in the evening, when UTC is already tomorrow", () => {
+    // 8:03 PM Pacific on Sep 25 is 03:03 UTC on Sep 26. The earliest
+    // date must still be Sep 25 + 2, not Sep 26 + 2 (the bug this pins).
+    const from = new Date("2026-09-26T03:03:00Z");
+    expect(toDateInputValue(earliestReadyDate(from))).toBe("2026-09-27");
   });
 });
 
