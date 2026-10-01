@@ -16,7 +16,7 @@ export const bakeryConfig = {
   zip: "92108",
   county: "San Diego",
   registrationNumber: "DEH2026-FCFO-002557",
-  contactEmail: "robplascencia@gmail.com",
+  contactEmail: "robert@missionvalleybakers.com",
   contactPhone: "(858) 373-9363",
   instagramHandle: "@yourcottagebakery",
   serviceCounty: "San Diego",
