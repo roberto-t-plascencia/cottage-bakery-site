@@ -37,6 +37,7 @@ const getOrderByPayPalOrderId = vi.fn(async (id: string) =>
 const markOrderPaid = vi.fn(async (_id: string, _paypalOrderId: string) => ({ ...fakeOrder, paymentStatus: "PAID" as PaymentStatus }));
 
 vi.mock("../../src/lib/repositories/orders", () => ({
+  getOrderById: vi.fn(async (id: string) => ({ ...fakeOrder, id, items: [] })),
   getOrderByPayPalOrderId: (...args: [string]) => getOrderByPayPalOrderId(...args),
   markOrderPaid: (...args: [string, string]) => markOrderPaid(...args),
 }));

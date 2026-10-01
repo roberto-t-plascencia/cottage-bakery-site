@@ -12,7 +12,11 @@ import {
 } from "../lib/repositories/orders";
 import { capturePayPalOrder, createPayPalOrder, getPayPalOrder } from "../lib/paypal";
 import { validateOrder } from "../lib/orders";
-import { sendOrderReceivedEmail, sendPaymentConfirmedEmail } from "../lib/email";
+import {
+  sendNewOrderNotification,
+  sendOrderReceivedEmail,
+  sendPaymentConfirmedEmail,
+} from "../lib/email";
 import { bakeryToday, parseDateOnly } from "../lib/cart";
 import { deliveryFeeCents } from "../lib/fees";
 import { normalizeUsPhone } from "../lib/phone";
@@ -163,6 +167,11 @@ ordersRouter.post("/", async (req, res) => {
   // nothing runs after this handler's response on this serverless
   // platform, but never throws — see that file's top comment.
   await sendOrderReceivedEmail(order);
+  // PayPal orders alert the bakery once they're paid (capture route
+  // below, or the webhook), not now: most unpaid ones are abandoned.
+  if (order.paymentMethod === "MANUAL") {
+    await sendNewOrderNotification(order);
+  }
 
   res.status(201).json({ order });
 });
@@ -283,6 +292,7 @@ ordersRouter.post("/:id/capture-payment", async (req, res) => {
   const updated = await markOrderPaid(order.id, result.paypalOrderId);
   if (updated) {
     await sendPaymentConfirmedEmail(updated);
+    await sendNewOrderNotification({ ...updated, items: order.items });
   }
   res.json({ order: updated });
 });

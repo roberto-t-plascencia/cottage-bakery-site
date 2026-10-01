@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { verifyWebhookSignature } from "../lib/paypal";
-import { getOrderByPayPalOrderId, markOrderPaid } from "../lib/repositories/orders";
-import { sendPaymentConfirmedEmail } from "../lib/email";
+import { getOrderById, getOrderByPayPalOrderId, markOrderPaid } from "../lib/repositories/orders";
+import { sendNewOrderNotification, sendPaymentConfirmedEmail } from "../lib/email";
 
 export const webhooksRouter = Router();
 
@@ -71,6 +71,9 @@ webhooksRouter.post("/paypal", async (req, res) => {
       const updated = await markOrderPaid(order.id, paypalOrderId);
       if (updated) {
         await sendPaymentConfirmedEmail(updated);
+        // The alert lists the items, which this lookup doesn't include.
+        const withItems = await getOrderById(updated.id);
+        if (withItems) await sendNewOrderNotification(withItems);
       }
     }
   }

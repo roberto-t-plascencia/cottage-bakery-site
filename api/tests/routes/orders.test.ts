@@ -40,7 +40,7 @@ const fakeOrder = {
   subtotalCents: 2200,
   deliveryFeeCents: 0,
   totalCents: 2200,
-  paymentMethod: "MANUAL" as const,
+  paymentMethod: "MANUAL" as "MANUAL" | "PAYPAL",
   paymentStatus: "UNPAID" as PaymentStatus,
   paypalOrderId: null as string | null,
   createdAt: "2026-01-01T00:00:00Z",
@@ -102,7 +102,15 @@ beforeAll(() => {
   process.env.JWT_SECRET = "test-secret-at-least-16-chars-long";
 });
 
+const sendNewOrderNotification = vi.fn(async (_order: unknown) => {});
+vi.mock("../../src/lib/email", () => ({
+  sendOrderReceivedEmail: vi.fn(async () => {}),
+  sendPaymentConfirmedEmail: vi.fn(async () => {}),
+  sendNewOrderNotification: (...args: [unknown]) => sendNewOrderNotification(...args),
+}));
+
 beforeEach(() => {
+  sendNewOrderNotification.mockClear();
   getOrderById.mockClear();
   createOrder.mockClear();
   getOrderById.mockImplementation(async (id: string) => (id === fakeOrder.id ? fakeOrder : null));
@@ -116,6 +124,40 @@ const { issueAdminToken } = await import("../../src/lib/auth");
 
 const productsRepo = await import("../../src/lib/repositories/products");
 const { bakeryToday } = await import("../../src/lib/cart");
+
+describe("new-order alert to the bakery", () => {
+  const body = {
+    customerName: "Jane Baker",
+    customerEmail: "jane@example.com",
+    customerPhone: "555-123-4567",
+    fulfillmentMethod: "PICKUP",
+    requestedDate: "2099-01-05",
+    items: [{ productId: products[0].id, quantity: 1 }],
+  };
+
+  it("goes out when a pay-later order is placed", async () => {
+    await request(createApp()).post("/orders").send(body);
+    expect(sendNewOrderNotification).toHaveBeenCalledTimes(1);
+  });
+
+  it("waits for payment on a PayPal order", async () => {
+    await request(createApp()).post("/orders").send({ ...body, paymentMethod: "PAYPAL" });
+    expect(sendNewOrderNotification).not.toHaveBeenCalled();
+
+    getOrderById.mockResolvedValueOnce({
+      ...fakeOrder,
+      paymentMethod: "PAYPAL",
+      paypalOrderId: "PAYPAL-ORDER-ID",
+    });
+    await request(createApp())
+      .post(`/orders/${fakeOrder.id}/capture-payment`)
+      .send({ paypalOrderId: "PAYPAL-ORDER-ID" });
+    expect(sendNewOrderNotification).toHaveBeenCalledTimes(1);
+    expect(sendNewOrderNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentStatus: "PAID", items: fakeOrder.items })
+    );
+  });
+});
 
 describe("POST /orders", () => {
   it("rejects a sold-out item for today but accepts it for a later date", async () => {
