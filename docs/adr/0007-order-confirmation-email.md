@@ -89,7 +89,21 @@ Both live in `api/` only, both optional:
 - `EMAIL_FROM` — the sender address. Defaults to
   `Mission Valley Home Bakers <onboarding@resend.dev>` when unset.
 
-## Known gap: no verified sending domain yet
+## Update (2026-10): domain verified, bakery alerts added
+
+`missionvalleybakers.com` is verified in Resend and `EMAIL_FROM` is
+`orders@missionvalleybakers.com` in Preview and Production, so the
+"known gap" below is closed.
+
+The bakery also gets a "new order" alert (`sendNewOrderNotification`),
+sent to `ORDER_NOTIFICATION_EMAILS` (comma-separated). Pay-later orders
+alert when they're placed; PayPal orders alert only once payment is
+captured (sync capture or webhook, behind the same once-only guard as
+the payment email), so abandoned PayPal checkouts never alert anyone.
+Reply-To is the customer's address, and Preview alerts are prefixed
+"[Preview]".
+
+## Known gap (closed, see above): no verified sending domain yet
 
 `onboarding@resend.dev` is Resend's shared testing sender, which
 **only delivers to the Resend account's own email address** — not to
