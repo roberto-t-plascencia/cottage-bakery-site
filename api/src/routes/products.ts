@@ -5,7 +5,7 @@ import {
   getProductById,
   listActiveProducts,
   listAllProducts,
-  setProductActive,
+  updateProduct,
   setProductImageUrl,
   setProductSoldOutOn,
 } from "../lib/repositories/products";
@@ -39,7 +39,7 @@ const text = (field: string, max: number) =>
 // Everything a California cottage food label needs is required here
 // (ingredients, allergens, net weight), so a product can't go on the menu
 // without its label content. Allergens can be "none".
-const CreateProductSchema = z.object({
+const productFields = {
   name: text("Name", 80),
   description: text("Description", 500),
   priceCents: z
@@ -51,8 +51,9 @@ const CreateProductSchema = z.object({
   allergens: text("Allergens", 200),
   ingredients: text("Ingredients", 2000),
   netWeight: text("Net weight", 60),
-  isActive: z.boolean().default(false),
-});
+};
+
+const CreateProductSchema = z.object({ ...productFields, isActive: z.boolean().default(false) });
 
 // POST /products — admin. Creates a product. It starts hidden unless
 // isActive is true, so the owner can add a photo before it shows.
@@ -72,16 +73,23 @@ productsRouter.post("/", requireAdmin, async (req, res) => {
   res.status(201).json({ product });
 });
 
-const UpdateProductSchema = z.object({ isActive: z.boolean() });
+// Every field optional; the ones sent must still pass the same checks as
+// on create (a label field can't be blanked out).
+const UpdateProductSchema = z
+  .object({ ...productFields, isActive: z.boolean({ error: "isActive must be true or false." }) })
+  .partial()
+  .strict()
+  .refine((changes) => Object.keys(changes).length > 0, "Send at least one field to change.");
 
-// PATCH /products/:id — admin. Shows or hides a product on the menu.
+// PATCH /products/:id — admin. Edits a product's details and/or shows or
+// hides it on the menu. The slug stays the same even if the name changes.
 productsRouter.patch("/:id", requireAdmin, async (req, res) => {
   const parsed = UpdateProductSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ errors: ["isActive must be true or false."] });
+    res.status(400).json({ errors: parsed.error.issues.map((i) => i.message) });
     return;
   }
-  const product = await setProductActive(String(req.params.id), parsed.data.isActive);
+  const product = await updateProduct(String(req.params.id), parsed.data);
   if (!product) {
     res.status(404).json({ errors: ["Product not found."] });
     return;

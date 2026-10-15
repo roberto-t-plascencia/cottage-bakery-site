@@ -3,9 +3,9 @@ import { cookies } from "next/headers";
 import { apiClient, ApiError } from "@/lib/apiClient";
 import { ADMIN_SESSION_COOKIE_NAME } from "@/lib/auth";
 
-// The admin "Sold out today" switch and "Show on menu / Hide" button post
-// here; same cookie-to-bearer relay as ../orders/[id]/route.ts. api/
-// does the real auth check.
+// The admin "Sold out today" switch, the "Show on menu / Hide" button and
+// the edit-product form post here; same cookie-to-bearer relay as
+// ../orders/[id]/route.ts. api/ does the real auth and field checks.
 export async function PATCH(
   request: Request,
   ctx: RouteContext<"/api/admin/products/[id]">
@@ -18,19 +18,16 @@ export async function PATCH(
 
   const { id } = await ctx.params;
   const body = await request.json().catch(() => ({}));
-  const soldOut = typeof body.soldOutToday === "boolean";
-  const active = typeof body.isActive === "boolean";
-  if (soldOut === active) {
-    return NextResponse.json(
-      { errors: ["Send either soldOutToday or isActive, true or false."] },
-      { status: 400 }
-    );
+  const { soldOutToday, ...changes } = body ?? {};
+  if (soldOutToday !== undefined && typeof soldOutToday !== "boolean") {
+    return NextResponse.json({ errors: ["soldOutToday must be true or false."] }, { status: 400 });
   }
 
   try {
-    const product = soldOut
-      ? await apiClient.setProductSoldOut(id, body.soldOutToday, token)
-      : await apiClient.setProductActive(id, body.isActive, token);
+    const product =
+      typeof soldOutToday === "boolean"
+        ? await apiClient.setProductSoldOut(id, soldOutToday, token)
+        : await apiClient.updateProduct(id, changes, token);
     return NextResponse.json({ product });
   } catch (err) {
     if (err instanceof ApiError) {

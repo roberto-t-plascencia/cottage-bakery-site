@@ -1,6 +1,7 @@
 import type {
   CreateOrderRequest,
   CreateProductRequest,
+  UpdateProductRequest,
   FulfillmentMethod,
   Order,
   OrderWithItems,
@@ -115,10 +116,10 @@ export const apiClient = {
   createProduct: (body: CreateProductRequest, token: string) =>
     apiFetch<{ product: Product }>("/products", { method: "POST", body, token }).then((r) => r.product),
 
-  setProductActive: (id: string, isActive: boolean, token: string) =>
+  updateProduct: (id: string, changes: UpdateProductRequest, token: string) =>
     apiFetch<{ product: Product }>(`/products/${id}`, {
       method: "PATCH",
-      body: { isActive },
+      body: changes,
       token,
     }).then((r) => r.product),
 

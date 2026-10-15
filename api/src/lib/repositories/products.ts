@@ -64,16 +64,37 @@ export async function listAllProducts(): Promise<Product[]> {
   return (data as ProductRow[]).map(rowToProduct);
 }
 
-/** Shows (true) or hides (false) a product on the menu. Null when no product has that id. */
-export async function setProductActive(id: string, isActive: boolean): Promise<Product | null> {
+export type ProductChanges = Partial<
+  Pick<
+    Product,
+    "name" | "description" | "priceCents" | "category" | "allergens" | "ingredients" | "netWeight" | "isActive"
+  >
+>;
+
+/**
+ * Updates whichever of a product's editable fields are given; the slug
+ * (its URL-safe id) never changes. Null when no product has that id.
+ * Past orders are unaffected: each order line stores its own price.
+ */
+export async function updateProduct(id: string, changes: ProductChanges): Promise<Product | null> {
+  const columns: Record<string, unknown> = {};
+  if (changes.name !== undefined) columns.name = changes.name;
+  if (changes.description !== undefined) columns.description = changes.description;
+  if (changes.priceCents !== undefined) columns.price_cents = changes.priceCents;
+  if (changes.category !== undefined) columns.category = changes.category;
+  if (changes.allergens !== undefined) columns.allergens = changes.allergens;
+  if (changes.ingredients !== undefined) columns.ingredients = changes.ingredients;
+  if (changes.netWeight !== undefined) columns.net_weight = changes.netWeight;
+  if (changes.isActive !== undefined) columns.is_active = changes.isActive;
+
   const { data, error } = await supabase
     .from("products")
-    .update({ is_active: isActive })
+    .update(columns)
     .eq("id", id)
     .select()
     .maybeSingle();
 
-  if (error) throw new Error(`setProductActive: ${error.message}`);
+  if (error) throw new Error(`updateProduct: ${error.message}`);
   return data ? rowToProduct(data as ProductRow) : null;
 }
 

@@ -113,7 +113,10 @@ paths:
   /products/{id}:
     patch:
       operationId: updateProduct
-      summary: Show (isActive true) or hide a product on the menu. Admin only.
+      summary: |
+        Edit any of a product's details and/or show (isActive true) or hide it
+        on the menu. Send only the fields to change. The slug never changes.
+        Admin only.
       security:
         - bearerAuth: []
       parameters:
@@ -128,11 +131,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [isActive]
-              properties:
-                isActive:
-                  type: boolean
+              $ref: "#/components/schemas/UpdateProductRequest"
       responses:
         "200":
           description: OK
@@ -642,6 +641,36 @@ components:
         isActive:
           type: boolean
           default: false
+
+    UpdateProductRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          maxLength: 80
+        description:
+          type: string
+          maxLength: 500
+        priceCents:
+          type: integer
+          minimum: 1
+          maximum: 100000
+        category:
+          type: string
+          maxLength: 40
+        allergens:
+          type: string
+          maxLength: 200
+        ingredients:
+          type: string
+          maxLength: 2000
+        netWeight:
+          type: string
+          maxLength: 60
+        isActive:
+          type: boolean
 
     OrderItemWithProduct:
       type: object

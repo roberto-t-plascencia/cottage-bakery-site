@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { apiClient, ApiError } from "@/lib/apiClient";
 import { ADMIN_SESSION_COOKIE_NAME } from "@/lib/auth";
-import { AdminNewProductForm } from "@/components/AdminNewProductForm";
+import { AdminProductForm } from "@/components/AdminProductForm";
 
 export const metadata = { title: "Admin · Add product" };
 export const dynamic = "force-dynamic";
@@ -35,7 +35,7 @@ export default async function NewProductPage() {
         The ingredients, allergens and net weight appear on the menu and must
         match the product&apos;s printed cottage food label.
       </p>
-      <AdminNewProductForm categories={categories} />
+      <AdminProductForm categories={categories} />
     </div>
   );
 }

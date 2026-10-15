@@ -30,8 +30,8 @@ const getProductById = vi.fn(async (id: string) =>
   id === products[0].id ? { ...products[0], imageUrl: "https://x.supabase.co/storage/v1/object/public/product-images/old.jpg" } : null
 );
 
-const setProductActive = vi.fn(async (id: string, isActive: boolean) =>
-  id === products[0].id ? { ...products[0], isActive } : null
+const updateProduct = vi.fn(async (id: string, changes: Record<string, unknown>) =>
+  id === products[0].id ? { ...products[0], ...changes } : null
 );
 const createProduct = vi.fn(async (input: Record<string, unknown>) => ({
   ...products[0],
@@ -41,7 +41,7 @@ const createProduct = vi.fn(async (input: Record<string, unknown>) => ({
 
 vi.mock("../../src/lib/repositories/products", () => ({
   createProduct: (...args: [Record<string, unknown>]) => createProduct(...args),
-  setProductActive: (...args: [string, boolean]) => setProductActive(...args),
+  updateProduct: (...args: [string, Record<string, unknown>]) => updateProduct(...args),
   listActiveProducts: vi.fn(async () => products),
   listAllProducts: vi.fn(async () => [...products, { ...products[0], id: "hidden", isActive: false }]),
   findProductsByIds: vi.fn(async () => []),
@@ -245,7 +245,33 @@ describe("PATCH /products/:id", () => {
       .send({ isActive: false });
     expect(res.status).toBe(200);
     expect(res.body.product.isActive).toBe(false);
-    expect(setProductActive).toHaveBeenLastCalledWith(products[0].id, false);
+    expect(updateProduct).toHaveBeenLastCalledWith(products[0].id, { isActive: false });
+  });
+
+  it("edits a product's details, trimmed, without touching the rest", async () => {
+    const res = await request(createApp())
+      .patch(url)
+      .set("Authorization", `Bearer ${issueAdminToken()}`)
+      .send({ priceCents: 650, ingredients: "  Flour, Water, Salt.  " });
+    expect(res.status).toBe(200);
+    expect(updateProduct).toHaveBeenLastCalledWith(products[0].id, {
+      priceCents: 650,
+      ingredients: "Flour, Water, Salt.",
+    });
+    expect(res.body.product.priceCents).toBe(650);
+  });
+
+  it("won't blank out a label field or take unknown fields", async () => {
+    const auth = `Bearer ${issueAdminToken()}`;
+    const blank = await request(createApp()).patch(url).set("Authorization", auth).send({ allergens: " " });
+    expect(blank.status).toBe(400);
+    expect(blank.body.errors).toContain("Allergens is required.");
+
+    const unknown = await request(createApp()).patch(url).set("Authorization", auth).send({ slug: "new-slug" });
+    expect(unknown.status).toBe(400);
+
+    const empty = await request(createApp()).patch(url).set("Authorization", auth).send({});
+    expect(empty.status).toBe(400);
   });
 
   it("rejects a body without a boolean", async () => {

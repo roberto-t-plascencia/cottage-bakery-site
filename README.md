@@ -105,12 +105,12 @@ npm run dev              # http://localhost:3000
 
 ### What's not built
 
-Being upfront about scope: the admin dashboard can add products, show
-or hide them, set photos and mark them sold out for the day, but it
-can't edit an existing product's name, price or label text yet. Those
-changes are a SQL update on each database. Products added from the admin
-live only in that environment's database (preview and production are
-separate), not in `api/src/data/products.seed.ts`.
+Being upfront about scope: the admin dashboard can add and edit products,
+show or hide them, set photos and mark them sold out for the day. It
+can't delete a product (hide it instead, so past orders keep their
+details). Products added or edited from the admin live only in that
+environment's database (preview and production are separate), not in
+`api/src/data/products.seed.ts`.
 
 ## Scripts
 

@@ -21,3 +21,4 @@ export type OrderItemWithProduct = components["schemas"]["OrderItemWithProduct"]
 export type OrderWithItems = components["schemas"]["OrderWithItems"];
 export type CreateOrderRequest = components["schemas"]["CreateOrderRequest"];
 export type CreateProductRequest = components["schemas"]["CreateProductRequest"];
+export type UpdateProductRequest = components["schemas"]["UpdateProductRequest"];
