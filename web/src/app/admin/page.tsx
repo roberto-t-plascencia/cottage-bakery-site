@@ -83,7 +83,16 @@ export default async function AdminOrdersPage() {
                   </p>
                 </div>
               )}
-              <AdminVisibilityToggle productId={p.id} productName={p.name} isActive={p.isActive} />
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <Link
+                  href={`/admin/products/${p.id}/edit`}
+                  aria-label={`Edit ${p.name}`}
+                  className="text-xs font-medium text-amber-800 hover:underline dark:text-amber-400"
+                >
+                  Edit
+                </Link>
+                <AdminVisibilityToggle productId={p.id} productName={p.name} isActive={p.isActive} />
+              </div>
             </li>
           ))}
         </ul>

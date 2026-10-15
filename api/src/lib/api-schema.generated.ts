@@ -78,7 +78,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Show (isActive true) or hide a product on the menu. Admin only. */
+        /**
+         * Edit any of a product's details and/or show (isActive true) or hide it
+         *     on the menu. Send only the fields to change. The slug never changes.
+         *     Admin only.
+         */
         patch: operations["updateProduct"];
         trace?: never;
     };
@@ -339,6 +343,16 @@ export interface components {
             /** @default false */
             isActive: boolean;
         };
+        UpdateProductRequest: {
+            name?: string;
+            description?: string;
+            priceCents?: number;
+            category?: string;
+            allergens?: string;
+            ingredients?: string;
+            netWeight?: string;
+            isActive?: boolean;
+        };
         OrderItemWithProduct: {
             /** Format: uuid */
             id: string;
@@ -534,9 +548,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    isActive: boolean;
-                };
+                "application/json": components["schemas"]["UpdateProductRequest"];
             };
         };
         responses: {

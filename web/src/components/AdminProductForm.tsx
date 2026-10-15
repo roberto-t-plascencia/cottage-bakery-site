@@ -26,9 +26,25 @@ const EMPTY: Form = {
   isActive: false,
 };
 
-export function AdminNewProductForm({ categories }: { categories: string[] }) {
+/** The product being edited; omit to create a new one. */
+export type EditableProduct = Omit<Form, "price"> & { id: string; priceCents: number };
+
+/**
+ * Add-product and edit-product form (same fields, same checks). Editing
+ * keeps the product's URL-safe id and photo; past orders keep the price
+ * they were placed at.
+ */
+export function AdminProductForm({
+  categories,
+  product,
+}: {
+  categories: string[];
+  product?: EditableProduct;
+}) {
   const router = useRouter();
-  const [form, setForm] = useState<Form>(EMPTY);
+  const [form, setForm] = useState<Form>(
+    product ? { ...product, price: (product.priceCents / 100).toFixed(2) } : EMPTY
+  );
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -46,8 +62,8 @@ export function AdminNewProductForm({ categories }: { categories: string[] }) {
 
     setSaving(true);
     setErrors([]);
-    const res = await fetch("/api/admin/products", {
-      method: "POST",
+    const res = await fetch(product ? `/api/admin/products/${product.id}` : "/api/admin/products", {
+      method: product ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: form.name,
@@ -170,12 +186,16 @@ export function AdminNewProductForm({ categories }: { categories: string[] }) {
           onChange={(e) => set("isActive", e.target.checked)}
           className="mt-1"
         />
-        <span>
-          Show on the menu right away
-          <span className="block text-black/50 dark:text-white/50">
-            Leave unchecked to add a photo first, then use &ldquo;Show on menu&rdquo; in the admin list.
+        {product ? (
+          <span>Show on the menu</span>
+        ) : (
+          <span>
+            Show on the menu right away
+            <span className="block text-black/50 dark:text-white/50">
+              Leave unchecked to add a photo first, then use &ldquo;Show on menu&rdquo; in the admin list.
+            </span>
           </span>
-        </span>
+        )}
       </label>
 
       <button
@@ -183,7 +203,7 @@ export function AdminNewProductForm({ categories }: { categories: string[] }) {
         disabled={saving}
         className="rounded-full bg-amber-700 px-6 py-2 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
       >
-        {saving ? "Saving…" : "Add product"}
+        {saving ? "Saving…" : product ? "Save changes" : "Add product"}
       </button>
     </form>
   );
