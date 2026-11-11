@@ -1,4 +1,6 @@
 import type {
+  DayInventory,
+  DayInventoryWithProduct,
   CreateOrderRequest,
   CreateProductRequest,
   UpdateProductRequest,
@@ -122,6 +124,25 @@ export const apiClient = {
       body: changes,
       token,
     }).then((r) => r.product),
+
+  // The admin day view: every product's starting quantity and
+  // remaining count for one date. `date` is a bare "YYYY-MM-DD" and is
+  // encoded rather than interpolated raw, since it reaches api/ as a
+  // query parameter. See docs/adr/0010-per-day-inventory.md.
+  listDayInventory: (date: string, token: string) =>
+    apiFetch<{ date: string; inventory: DayInventoryWithProduct[] }>(
+      `/products/inventory?date=${encodeURIComponent(date)}`,
+      { token }
+    ).then((r) => r.inventory),
+
+  // null startQuantity clears the day's cap (back to unlimited), which
+  // is not the same as 0 ("sold out, take nothing").
+  setDayInventory: (id: string, date: string, startQuantity: number | null, token: string) =>
+    apiFetch<{ inventory: DayInventory }>(`/products/${id}/inventory`, {
+      method: "PUT",
+      body: { date, startQuantity },
+      token,
+    }).then((r) => r.inventory),
 
   setProductSoldOut: (id: string, soldOutToday: boolean, token: string) =>
     apiFetch<{ product: Product }>(`/products/${id}/sold-out`, {
