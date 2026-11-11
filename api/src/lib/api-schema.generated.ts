@@ -103,6 +103,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/products/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The whole catalog's starting quantities and remaining counts for
+         *     one calendar date. Admin only.
+         *
+         *     Includes products with no cap set for that date (startQuantity
+         *     and remaining null, meaning unlimited), so the day view can show
+         *     everything the bakery could bake rather than only what's already
+         *     been planned. See docs/adr/0010-per-day-inventory.md.
+         */
+        get: operations["listDayInventory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/products/{id}/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set, change, or clear how many of this product the bakery starts
+         *     a given date with. Admin only.
+         *
+         *     `startQuantity: null` clears the cap, returning that date to
+         *     unlimited — deliberately distinct from `0`, which means "sold
+         *     out, accept nothing." Lowering a cap below what's already been
+         *     ordered is allowed (capacity really does shrink): that date then
+         *     reports 0 remaining and the orders already taken stand.
+         */
+        put: operations["setDayInventory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/products/{id}/image": {
         parameters: {
             query?: never;
@@ -329,6 +380,34 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        /**
+         * @description A product's planned capacity for one calendar date, and what's
+         *     left of it. `remaining` is derived (startQuantity minus what's
+         *     been ordered for that date, cancelled orders excluded), never
+         *     stored — see docs/adr/0010-per-day-inventory.md.
+         */
+        DayInventory: {
+            /** Format: uuid */
+            productId: string;
+            /** Format: date */
+            date: string;
+            /** @description The day's planned starting count, or null for no cap (unlimited). */
+            startQuantity: number | null;
+            /**
+             * @description Quantity already ordered for that date, excluding cancelled
+             *     orders. Always a real number, even on an uncapped date.
+             */
+            ordered: number;
+            /**
+             * @description What's left, clamped at 0, or null when the date is uncapped.
+             *     Null rather than a sentinel number so an uncapped date can't
+             *     be compared against 0 and misread as sold out.
+             */
+            remaining: number | null;
+        };
+        DayInventoryWithProduct: components["schemas"]["DayInventory"] & {
+            product: components["schemas"]["Product"];
         };
         CreateProductRequest: {
             name: string;
@@ -589,6 +668,70 @@ export interface operations {
                 };
             };
             401: components["responses"]["Errors"];
+        };
+    };
+    listDayInventory: {
+        parameters: {
+            query: {
+                /** @description Calendar date, "YYYY-MM-DD" — see specs/ENGINEERING_RULES.md "Date-only values." */
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date */
+                        date: string;
+                        inventory: components["schemas"]["DayInventoryWithProduct"][];
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
+            401: components["responses"]["Errors"];
+        };
+    };
+    setDayInventory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: date */
+                    date: string;
+                    startQuantity: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        inventory: components["schemas"]["DayInventory"];
+                    };
+                };
+            };
+            400: components["responses"]["Errors"];
+            401: components["responses"]["Errors"];
+            404: components["responses"]["Errors"];
         };
     };
     setProductImage: {

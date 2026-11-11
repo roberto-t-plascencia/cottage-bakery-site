@@ -106,11 +106,20 @@ npm run dev              # http://localhost:3000
 ### What's not built
 
 Being upfront about scope: the admin dashboard can add and edit products,
-show or hide them, set photos and mark them sold out for the day. It
-can't delete a product (hide it instead, so past orders keep their
-details). Products added or edited from the admin live only in that
-environment's database (preview and production are separate), not in
-`api/src/data/products.seed.ts`.
+show or hide them, set photos, mark them sold out for the day, and set a
+starting quantity per item per date that counts down as orders come in
+(see ADR 0010). It can't delete a product (hide it instead, so past
+orders keep their details), and it can't delete an order either —
+orders are windowed into date views and an archive rather than removed,
+so the sales history stays intact. Products added or edited from the
+admin live only in that environment's database (preview and production
+are separate), not in `api/src/data/products.seed.ts`.
+
+The customer-facing menu doesn't yet show how many of an item are left
+for a given date. Ordering more than a date has left is rejected at
+checkout with a message naming what's actually available, but the menu
+itself won't warn you first — see ADR 0010's consequences for why that
+was left as a follow-up.
 
 ## Scripts
 
