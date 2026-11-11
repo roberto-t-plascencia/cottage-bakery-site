@@ -172,6 +172,97 @@ paths:
         "401":
           $ref: "#/components/responses/Errors"
 
+  /products/inventory:
+    get:
+      operationId: listDayInventory
+      summary: |
+        The whole catalog's starting quantities and remaining counts for
+        one calendar date. Admin only.
+
+        Includes products with no cap set for that date (startQuantity
+        and remaining null, meaning unlimited), so the day view can show
+        everything the bakery could bake rather than only what's already
+        been planned. See docs/adr/0010-per-day-inventory.md.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: true
+          description: Calendar date, "YYYY-MM-DD" — see specs/ENGINEERING_RULES.md "Date-only values."
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, inventory]
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  inventory:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DayInventoryWithProduct"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "401":
+          $ref: "#/components/responses/Errors"
+
+  /products/{id}/inventory:
+    put:
+      operationId: setDayInventory
+      summary: |
+        Set, change, or clear how many of this product the bakery starts
+        a given date with. Admin only.
+
+        `startQuantity: null` clears the cap, returning that date to
+        unlimited — deliberately distinct from `0`, which means "sold
+        out, accept nothing." Lowering a cap below what's already been
+        ordered is allowed (capacity really does shrink): that date then
+        reports 0 remaining and the orders already taken stand.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, startQuantity]
+              properties:
+                date:
+                  type: string
+                  format: date
+                startQuantity:
+                  type: [integer, "null"]
+                  minimum: 0
+                  maximum: 10000
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [inventory]
+                properties:
+                  inventory:
+                    $ref: "#/components/schemas/DayInventory"
+        "400":
+          $ref: "#/components/responses/Errors"
+        "401":
+          $ref: "#/components/responses/Errors"
+        "404":
+          $ref: "#/components/responses/Errors"
+
   /products/{id}/image:
     put:
       operationId: setProductImage
@@ -609,6 +700,45 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    DayInventory:
+      type: object
+      description: |
+        A product's planned capacity for one calendar date, and what's
+        left of it. `remaining` is derived (startQuantity minus what's
+        been ordered for that date, cancelled orders excluded), never
+        stored — see docs/adr/0010-per-day-inventory.md.
+      required: [productId, date, startQuantity, ordered, remaining]
+      properties:
+        productId:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        startQuantity:
+          type: [integer, "null"]
+          description: The day's planned starting count, or null for no cap (unlimited).
+        ordered:
+          type: integer
+          description: |
+            Quantity already ordered for that date, excluding cancelled
+            orders. Always a real number, even on an uncapped date.
+        remaining:
+          type: [integer, "null"]
+          description: |
+            What's left, clamped at 0, or null when the date is uncapped.
+            Null rather than a sentinel number so an uncapped date can't
+            be compared against 0 and misread as sold out.
+
+    DayInventoryWithProduct:
+      allOf:
+        - $ref: "#/components/schemas/DayInventory"
+        - type: object
+          required: [product]
+          properties:
+            product:
+              $ref: "#/components/schemas/Product"
 
     CreateProductRequest:
       type: object

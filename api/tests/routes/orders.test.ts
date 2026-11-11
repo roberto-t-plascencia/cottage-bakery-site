@@ -98,6 +98,17 @@ vi.mock("../../src/lib/paypal", () => ({
   getPayPalOrder: (...args: [string]) => getPayPalOrder(...args),
 }));
 
+type TestAvailability = { startQuantity: number | null; ordered: number };
+const emptyAvailability = () => new Map<string, TestAvailability>();
+
+// POST /orders checks the requested date's remaining count (see
+// src/lib/inventory.ts). An empty map means "nothing is capped," the
+// case every other test in this file predates and still assumes.
+const availabilityForDate = vi.fn(async (_date: string) => emptyAvailability());
+vi.mock("../../src/lib/repositories/inventory", () => ({
+  availabilityForDate: (...args: [string]) => availabilityForDate(...args),
+}));
+
 beforeAll(() => {
   process.env.JWT_SECRET = "test-secret-at-least-16-chars-long";
 });
@@ -117,6 +128,8 @@ beforeEach(() => {
   createPayPalOrder.mockClear();
   capturePayPalOrder.mockClear();
   capturePayPalOrder.mockResolvedValue({ captured: true, paypalOrderId: "PAYPAL-ORDER-ID" });
+  availabilityForDate.mockClear();
+  availabilityForDate.mockImplementation(async () => emptyAvailability());
 });
 
 const { createApp } = await import("../../src/app");
@@ -479,5 +492,60 @@ describe("POST /orders/:id/capture-payment", () => {
 
     expect(res.status).toBe(200);
     expect(capturePayPalOrder).not.toHaveBeenCalled();
+  });
+});
+
+// The per-day starting quantities from
+// docs/adr/0010-per-day-inventory.md, enforced here rather than only
+// shown in the admin UI — the count is what stops overselling, so this
+// is the test that matters for it.
+describe("POST /orders — per-day capacity", () => {
+  const order = (quantity: number, requestedDate = "2099-01-05") =>
+    request(createApp())
+      .post("/orders")
+      .send({
+        customerName: "Jane Baker",
+        customerEmail: "jane@example.com",
+        customerPhone: "555-123-4567",
+        fulfillmentMethod: "PICKUP",
+        requestedDate,
+        items: [{ productId: products[0].id, quantity }],
+      });
+
+  const capped = (startQuantity: number | null, ordered: number) =>
+    new Map<string, TestAvailability>([[products[0].id, { startQuantity, ordered }]]);
+
+  it("rejects a cart asking for more than the date has left", async () => {
+    availabilityForDate.mockResolvedValueOnce(capped(10, 8));
+    const res = await order(3);
+    expect(res.status).toBe(400);
+    expect(res.body.errors).toEqual([
+      "Only 2 Cookies left for that date — you asked for 3. Please lower the quantity or pick another date.",
+    ]);
+    expect(createOrder).not.toHaveBeenCalled();
+  });
+
+  it("rejects it as sold out when the day is used up", async () => {
+    availabilityForDate.mockResolvedValueOnce(capped(10, 10));
+    const res = await order(1);
+    expect(res.status).toBe(400);
+    expect(res.body.errors).toEqual([
+      "Cookies is sold out for that date. Please pick another date.",
+    ]);
+  });
+
+  it("accepts a cart that takes exactly what's left", async () => {
+    availabilityForDate.mockResolvedValueOnce(capped(10, 8));
+    expect((await order(2)).status).toBe(201);
+  });
+
+  it("checks the capacity of the date the customer asked for", async () => {
+    await order(1, "2099-03-17");
+    expect(availabilityForDate).toHaveBeenLastCalledWith("2099-03-17");
+  });
+
+  it("leaves an uncapped date unlimited", async () => {
+    // The default mock: no rows in daily_inventory for that date.
+    expect((await order(250)).status).toBe(201);
   });
 });

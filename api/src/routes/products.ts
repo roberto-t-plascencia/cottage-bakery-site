@@ -11,6 +11,11 @@ import {
 } from "../lib/repositories/products";
 import { slugify } from "../lib/slug";
 import { deleteProductImage, uploadProductImage } from "../lib/storage";
+import {
+  clearStartQuantity,
+  listDayInventory,
+  setStartQuantity,
+} from "../lib/repositories/inventory";
 import { bakeryToday } from "../lib/cart";
 import { requireAdmin } from "../middleware/requireAdmin";
 
@@ -27,6 +32,72 @@ productsRouter.get("/", async (_req, res) => {
 productsRouter.get("/all", requireAdmin, async (_req, res) => {
   const products = await listAllProducts();
   res.json({ products });
+});
+
+// A bare calendar date, the same "YYYY-MM-DD" shape orders use — see
+// specs/ENGINEERING_RULES.md "Date-only values". Validated as a string
+// and never parsed through `new Date()` here: this value is only ever
+// compared against a Postgres `date` column, so converting it to an
+// instant could only introduce the timezone off-by-one the rules warn
+// about.
+const DateOnlySchema = z
+  .string({ error: "date is required." })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "date must be in YYYY-MM-DD form.");
+
+// GET /products/inventory?date=YYYY-MM-DD — admin. The whole catalog's
+// starting quantities and remaining counts for one day, including
+// products with no cap set (startQuantity and remaining null), so the
+// day view can show everything the bakery could bake, not just what's
+// already planned. See docs/adr/0010-per-day-inventory.md.
+productsRouter.get("/inventory", requireAdmin, async (req, res) => {
+  const parsed = DateOnlySchema.safeParse(req.query.date);
+  if (!parsed.success) {
+    res.status(400).json({ errors: parsed.error.issues.map((i) => i.message) });
+    return;
+  }
+
+  const inventory = await listDayInventory(parsed.data);
+  res.json({ date: parsed.data, inventory });
+});
+
+// null clears the cap for that date (back to unlimited) — deliberately
+// distinct from 0, which means "sold out, accept nothing." The upper
+// bound is a sanity rail against a typo like 1000 instead of 10, not a
+// business rule.
+const SetInventorySchema = z.object({
+  date: DateOnlySchema,
+  startQuantity: z
+    .number({ error: "startQuantity must be a number or null." })
+    .int("startQuantity must be a whole number.")
+    .min(0, "startQuantity can't be negative.")
+    .max(10000, "startQuantity must be 10,000 or less.")
+    .nullable(),
+});
+
+// PUT /products/:id/inventory — admin. Sets, changes, or clears how many
+// of this product the bakery starts a given day with. Idempotent, and
+// safe to lower below what's already been ordered (capacity really does
+// shrink sometimes) — that day then reports 0 remaining and existing
+// orders stand. See repositories/inventory.ts's setStartQuantity.
+productsRouter.put("/:id/inventory", requireAdmin, async (req, res) => {
+  const parsed = SetInventorySchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ errors: parsed.error.issues.map((i) => i.message) });
+    return;
+  }
+
+  const { date, startQuantity } = parsed.data;
+  const id = String(req.params.id);
+  const inventory =
+    startQuantity === null
+      ? await clearStartQuantity(id, date)
+      : await setStartQuantity(id, date, startQuantity);
+
+  if (!inventory) {
+    res.status(404).json({ errors: ["Product not found."] });
+    return;
+  }
+  res.json({ inventory });
 });
 
 const text = (field: string, max: number) =>
