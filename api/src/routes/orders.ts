@@ -17,6 +17,8 @@ import {
   sendOrderReceivedEmail,
   sendPaymentConfirmedEmail,
 } from "../lib/email";
+import { availabilityForDate } from "../lib/repositories/inventory";
+import { findShortfalls, shortfallMessages } from "../lib/inventory";
 import { bakeryToday, parseDateOnly } from "../lib/cart";
 import { deliveryFeeCents } from "../lib/fees";
 import { normalizeUsPhone } from "../lib/phone";
@@ -127,6 +129,24 @@ ordersRouter.post("/", async (req, res) => {
 
   if (!validation.valid) {
     res.status(400).json({ errors: validation.errors });
+    return;
+  }
+
+  // Per-day capacity (see lib/inventory.ts and
+  // docs/adr/0010-per-day-inventory.md). Dates with no starting quantity
+  // set are uncapped, so this is a no-op for them — the common case.
+  //
+  // This is a read-then-write with no lock, so two orders placed in the
+  // same instant can both pass it and oversell the last loaf by one. At
+  // this bakery's volume that's a worse trade than the alternative
+  // (moving the check inside create_order_with_items, where it would run
+  // in the insert's transaction), and overselling by one is recoverable
+  // by a phone call. Documented as a known limitation in ADR 0010 rather
+  // than left as a silent surprise.
+  const availability = await availabilityForDate(body.requestedDate);
+  const shortfalls = findShortfalls(cartLines, availability);
+  if (shortfalls.length > 0) {
+    res.status(400).json({ errors: shortfallMessages(shortfalls) });
     return;
   }
 

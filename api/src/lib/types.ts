@@ -99,3 +99,28 @@ export type NewOrderInput = {
   deliveryFeeCents: number;
   items: { productId: string; quantity: number; unitPriceCents: number }[];
 };
+
+/**
+ * A product's planned capacity for one calendar date, plus what's left
+ * of it. See supabase/migrations/0007_add_daily_inventory.sql.
+ *
+ * `startQuantity` null means *unlimited* — no cap has been set for that
+ * (product, date) — and `remaining` is then null too, not Infinity or a
+ * sentinel number, so a caller that forgets to handle the unlimited case
+ * gets a type error instead of a wrong comparison against 0.
+ *
+ * `ordered` is always real: it's summed from the live order items for
+ * that date, so it's meaningful even on an uncapped day ("we've taken 7
+ * sourdough for Friday" is useful whether or not Friday has a cap).
+ */
+export type DayInventory = {
+  productId: string;
+  /** "YYYY-MM-DD" — see specs/ENGINEERING_RULES.md "Date-only values". */
+  date: string;
+  startQuantity: number | null;
+  ordered: number;
+  remaining: number | null;
+};
+
+/** A DayInventory with the product it belongs to, for the admin day view. */
+export type DayInventoryWithProduct = DayInventory & { product: Product };
