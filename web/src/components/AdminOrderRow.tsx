@@ -55,13 +55,19 @@ export function AdminOrderRow({ order }: { order: AdminOrderRowData }) {
   }
 
   return (
-    <tr className="border-b border-black/10 align-top dark:border-white/10">
-      <td className="py-4 pr-4">
+    // Four columns do not fit in 375px. Rather than a horizontal
+    // scroller (which hides the status control off-screen — the one thing
+    // the baker actually needs to tap), the row switches to a stacked
+    // card below sm: via display overrides, and is a real table row from
+    // sm: up. The <thead> is hidden on phones to match, in
+    // app/admin/page.tsx.
+    <tr className="block border-b border-black/10 py-3 align-top dark:border-white/10 sm:table-row sm:py-0">
+      <td className="block sm:table-cell sm:py-4 sm:pr-4">
         <p className="font-medium">{order.customerName}</p>
         <p className="text-black/60 dark:text-white/60">{order.customerEmail}</p>
         <p className="text-black/60 dark:text-white/60">{order.customerPhone}</p>
       </td>
-      <td className="py-4 pr-4">
+      <td className="block pt-2 sm:table-cell sm:py-4 sm:pr-4">
         <ul>
           {order.items.map((item, i) => (
             <li key={i}>
@@ -76,7 +82,7 @@ export function AdminOrderRow({ order }: { order: AdminOrderRowData }) {
           </p>
         )}
       </td>
-      <td className="py-4 pr-4">
+      <td className="block pt-2 sm:table-cell sm:py-4 sm:pr-4">
         <p>{order.fulfillmentMethod.replace("_", " ")}</p>
         {order.fulfillmentAddress && (
           <p className="text-black/60 dark:text-white/60">
@@ -88,7 +94,7 @@ export function AdminOrderRow({ order }: { order: AdminOrderRowData }) {
         </p>
         {order.notes && <p className="mt-1 italic">&ldquo;{order.notes}&rdquo;</p>}
       </td>
-      <td className="py-4">
+      <td className="block pt-2 sm:table-cell sm:py-4">
         <select
           value={status}
           disabled={isPending}
