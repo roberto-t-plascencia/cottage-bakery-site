@@ -40,7 +40,7 @@ export function AdminSoldOutToggle({ item }: { item: AdminMenuItem }) {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-between gap-4">
+    <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
       <div>
         <p className="font-medium">{item.name}</p>
         <p className={soldOut ? "text-sm text-red-700 dark:text-red-400" : "text-sm text-black/60 dark:text-white/60"}>

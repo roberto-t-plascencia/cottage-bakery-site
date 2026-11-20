@@ -207,15 +207,19 @@ export default function OrderPage() {
               onChange={(e) =>
                 setQuantity(line.productId, Number(e.target.value))
               }
-              className="w-16 rounded border border-black/15 px-2 py-1 text-center dark:border-white/20 dark:bg-transparent"
+              className="w-16 rounded border border-black/15 px-2 py-2 text-center dark:border-white/20 dark:bg-transparent"
             />
             <span className="w-20 text-right font-medium">
               {formatCents(line.unitPriceCents * line.quantity)}
             </span>
+            {/* Padding, not a bigger label: this was a 50x20 target, under
+                WCAG 2.5.8's 24x24 minimum, on a control that destroys a cart
+                line. The negative margin keeps the text visually aligned with
+                the column edge while the tappable box grows past it. */}
             <button
               type="button"
               onClick={() => remove(line.productId)}
-              className="text-sm text-black/50 hover:text-red-700 dark:text-white/50"
+              className="-mr-3 rounded px-3 py-3 text-sm text-black/50 hover:text-red-700 dark:text-white/50"
               aria-label={`Remove ${line.name}`}
             >
               Remove
