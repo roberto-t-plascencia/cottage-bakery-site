@@ -48,7 +48,7 @@ export function AdminVisibilityToggle({
         aria-label={isActive ? `Hide ${productName} from the menu` : `Show ${productName} on the menu`}
         className={
           isActive
-            ? "text-xs font-medium text-black/50 hover:underline disabled:opacity-50 dark:text-white/50"
+            ? "-mr-2 px-2 py-3 text-xs font-medium text-black/50 hover:underline disabled:opacity-50 dark:text-white/50"
             : "rounded-full bg-amber-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-50"
         }
       >

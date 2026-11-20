@@ -238,9 +238,13 @@ function DateGroup({
         )}
       </div>
 
-      <div className="mt-3 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
+      {/* The scroller only earns its keep once this is a real table,
+          from sm: up — below that each order is a stacked card (see
+          AdminOrderRow) and a horizontal scrollbar would be noise. */}
+      <div className="mt-3 sm:overflow-x-auto">
+        <table className="block w-full text-left text-sm sm:table">
+          {/* Column headings mean nothing once the columns are stacked. */}
+          <thead className="hidden sm:table-header-group">
             <tr className="border-b border-black/10 text-black/50 dark:border-white/10 dark:text-white/50">
               <th className="pb-2 pr-4 font-medium">Customer</th>
               <th className="pb-2 pr-4 font-medium">Items</th>
@@ -248,7 +252,7 @@ function DateGroup({
               <th className="pb-2 font-medium">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block sm:table-row-group">
             {orders.map((order) => (
               <AdminOrderRow
                 key={order.id}
@@ -334,7 +338,10 @@ function CatalogSection({
         </p>
         <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
           {inventory.map(({ product }) => (
-            <li key={product.id} className="flex items-center gap-4 py-3">
+            <li
+              key={product.id}
+              className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:gap-4"
+            >
               <AdminProductPhoto
                 productId={product.id}
                 productName={product.name}
@@ -350,11 +357,11 @@ function CatalogSection({
                   <p className="text-sm text-black/50 dark:text-white/50">Hidden from the menu</p>
                 </div>
               )}
-              <div className="flex shrink-0 flex-col items-end gap-2">
+              <div className="flex shrink-0 flex-row items-center justify-end gap-4 sm:ml-auto sm:flex-col sm:items-end sm:gap-2">
                 <Link
                   href={`/admin/products/${product.id}/edit`}
                   aria-label={`Edit ${product.name}`}
-                  className="text-xs font-medium text-amber-800 hover:underline dark:text-amber-400"
+                  className="-mr-2 px-2 py-3 text-xs font-medium text-amber-800 hover:underline dark:text-amber-400"
                 >
                   Edit
                 </Link>
