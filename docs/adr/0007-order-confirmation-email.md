@@ -87,7 +87,7 @@ Both live in `api/` only, both optional:
 - `RESEND_API_KEY` — secret. Unset means email sending is silently
   skipped (see above), not a startup failure.
 - `EMAIL_FROM` — the sender address. Defaults to
-  `Mission Valley Home Bakers <onboarding@resend.dev>` when unset.
+  `<businessName> <onboarding@resend.dev>` when unset.
 
 ## Update (2026-10): domain verified, bakery alerts added
 

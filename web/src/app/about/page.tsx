@@ -8,8 +8,8 @@ export default function AboutPage() {
       <h1 className="text-3xl font-bold tracking-tight">About</h1>
       <div className="prose prose-neutral mt-6 dark:prose-invert">
         <p>
-          Mission Valley Home Bakers began decades before the first brick was
-          laid or the first hole was dug. Long before opening our doors,
+          {bakeryConfig.businessName} began decades before the first brick
+          was laid or the first hole was dug. Long before opening our doors,
           Roberto Sr. and his wife, Violeta, were already building something
           special in their kitchen.
         </p>
@@ -28,7 +28,7 @@ export default function AboutPage() {
           tradition, hard work, and homemade flavor.
         </p>
         <p>
-          That dream became Mission Valley Home Bakers—a family-inspired
+          That dream became {bakeryConfig.businessName}—a family-inspired
           business dedicated to sharing carefully crafted baked goods with our
           community. Every item we make carries a piece of our journey: the
           years of practice, the lessons learned, and the love that first

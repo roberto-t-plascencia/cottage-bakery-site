@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { parseDateOnly } from "./cart";
+import { bakeryConfig } from "./config";
 import type { Order, OrderWithItems } from "./types";
 
 /**
@@ -21,7 +22,7 @@ import type { Order, OrderWithItems } from "./types";
 // missionvalleybakers.com domain. The fallback, resend.dev, is Resend's
 // shared testing domain: it only delivers to the Resend account's own
 // email address, which is fine for local development.
-const FROM_ADDRESS = process.env.EMAIL_FROM || "Mission Valley Home Bakers <onboarding@resend.dev>";
+const FROM_ADDRESS = process.env.EMAIL_FROM || `${bakeryConfig.businessName} <onboarding@resend.dev>`;
 
 let cachedClient: Resend | null = null;
 
@@ -129,7 +130,7 @@ export async function sendOrderReceivedEmail(order: OrderWithItems): Promise<voi
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;">
       <h2 style="margin-bottom:4px;">Thanks, ${escapeHtml(order.customerName)}!</h2>
-      <p style="color:#444;">Your order request from Mission Valley Home Bakers has been received.</p>
+      <p style="color:#444;">Your order request from ${escapeHtml(bakeryConfig.businessName)} has been received.</p>
       <table style="width:100%;border-collapse:collapse;margin:16px 0;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:8px 0;">
         ${itemsRowsHtml(order)}
         <tr>
@@ -151,7 +152,7 @@ export async function sendOrderReceivedEmail(order: OrderWithItems): Promise<voi
     </div>
   `;
 
-  await send(order.customerEmail, "Your Mission Valley Home Bakers order was received", html);
+  await send(order.customerEmail, `Your ${bakeryConfig.businessName} order was received`, html);
 }
 
 /**
@@ -174,7 +175,7 @@ export async function sendPaymentConfirmedEmail(order: Order): Promise<void> {
     </div>
   `;
 
-  await send(order.customerEmail, "Payment confirmed — Mission Valley Home Bakers", html);
+  await send(order.customerEmail, `Payment confirmed — ${bakeryConfig.businessName}`, html);
 }
 
 /**

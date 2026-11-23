@@ -24,7 +24,7 @@ export default function HomePage() {
         <div className="mt-8 flex justify-center gap-4">
           <Link
             href="/menu"
-            className="rounded-full bg-amber-700 px-6 py-3 text-white transition hover:bg-amber-800"
+            className="rounded-full bg-brand-700 px-6 py-3 text-white transition hover:bg-brand-800"
           >
             View the menu
           </Link>

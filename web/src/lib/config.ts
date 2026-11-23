@@ -7,7 +7,7 @@
  * production app — one seam, not scattered magic strings.
  */
 export const bakeryConfig = {
-  businessName: "Mission Valley Home Bakers",
+  businessName: "Violeta's Baked Goods",
   tagline: "Small-batch bakes, made to order in a licensed home kitchen.",
   ownerName: "Roberto Plascencia",
   city: "San Diego",

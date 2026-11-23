@@ -119,7 +119,7 @@ export function AdminInventoryRow({ item }: { item: AdminInventoryItem }) {
         <button
           type="submit"
           disabled={busy || !dirty}
-          className="rounded-full bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 disabled:opacity-40"
+          className="rounded-full bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-40"
         >
           {busy ? "Saving…" : "Save"}
         </button>

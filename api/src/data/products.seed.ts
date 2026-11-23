@@ -1,5 +1,5 @@
 /**
- * Mission Valley Home Bakers' actual menu. Ingredients/allergens/net
+ * Violeta's Baked Goods' actual menu. Ingredients/allergens/net
  * weight here match the product labels required by California's Cottage
  * Food Program (see docs/adr/0002-order-fulfillment-model.md and
  * api/supabase/migrations/0002_add_product_label_fields.sql) — this is

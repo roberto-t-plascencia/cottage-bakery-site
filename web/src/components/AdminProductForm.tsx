@@ -201,7 +201,7 @@ export function AdminProductForm({
       <button
         type="submit"
         disabled={saving}
-        className="rounded-full bg-amber-700 px-6 py-2 font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+        className="rounded-full bg-brand-700 px-6 py-2 font-medium text-white hover:bg-brand-800 disabled:opacity-50"
       >
         {saving ? "Saving…" : product ? "Save changes" : "Add product"}
       </button>

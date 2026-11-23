@@ -62,7 +62,7 @@ export function AdminDayPicker({ date, today }: { date: string; today: string })
           type="button"
           onClick={() => go(today)}
           disabled={isPending}
-          className="text-sm font-medium text-amber-800 hover:underline disabled:opacity-40 dark:text-amber-400"
+          className="text-sm font-medium text-brand-800 hover:underline disabled:opacity-40 dark:text-brand-400"
         >
           Back to today
         </button>
