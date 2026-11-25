@@ -141,7 +141,7 @@ export function AddressAutocomplete({ value, onChange, area, id }: Props) {
                   choose(r);
                 }}
                 onMouseEnter={() => setActive(i)}
-                className={`cursor-pointer px-3 py-2 ${i === active ? "bg-amber-100 dark:bg-white/10" : ""}`}
+                className={`cursor-pointer px-3 py-2 ${i === active ? "bg-brand-100 dark:bg-white/10" : ""}`}
               >
                 <span className="font-medium">{streetLine(r)}</span>{" "}
                 <span className="text-black/60 dark:text-white/60">{cityLine(r)}</span>

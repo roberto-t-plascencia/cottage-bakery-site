@@ -25,7 +25,7 @@ function OrderLink({ className = "" }: { className?: string }) {
   return (
     <Link
       href="/order"
-      className={`flex shrink-0 items-center gap-2 rounded-full bg-amber-700 px-4 py-2 text-sm text-white transition hover:bg-amber-800 ${className}`}
+      className={`flex shrink-0 items-center gap-2 rounded-full bg-brand-700 px-4 py-2 text-sm text-white transition hover:bg-brand-800 ${className}`}
     >
       Order
       {itemCount > 0 && (
@@ -42,7 +42,7 @@ function OrderLink({ className = "" }: { className?: string }) {
  *
  * Before this, the header was a single flex row at every width. At 375px
  * that squeezed the business name into a 72px-wide box, wrapping
- * "Mission Valley Home Bakers" onto four lines and making the header
+ * "Violeta's Baked Goods" onto several lines and making the header
  * 145px tall — 18% of the screen, on every page, before any content.
  *
  * The phone layout keeps the name legible (it wraps to two deliberate
@@ -61,7 +61,7 @@ function OrderLink({ className = "" }: { className?: string }) {
  */
 export function Header() {
   return (
-    <header className="border-b border-black/10 dark:border-white/10">
+    <header className="border-t-4 border-b border-t-leaf-700 border-b-black/10 dark:border-t-leaf-600 dark:border-b-white/10">
       <div className="mx-auto flex max-w-5xl flex-col gap-1 px-6 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:py-4">
         <div className="flex items-center justify-between gap-3">
           <Link
@@ -69,8 +69,8 @@ export function Header() {
             className="flex items-center gap-3 text-base font-semibold leading-tight tracking-tight sm:text-lg"
           >
             {/* Decorative: the business name right beside it is the link's accessible name. */}
-            <Image src="/logo-mark.svg" alt="" width={36} height={36} priority unoptimized className="shrink-0" />
-            {bakeryConfig.businessName}
+            <Image src="/logo-flower.svg" alt="" width={36} height={36} priority unoptimized className="shrink-0" />
+            <span className="text-brand-800 dark:text-brand-100">{bakeryConfig.businessName}</span>
           </Link>
           <OrderLink className="sm:hidden" />
         </div>

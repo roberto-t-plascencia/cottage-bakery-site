@@ -92,7 +92,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
       <button
         type="button"
         onClick={handleAdd}
-        className="mt-4 rounded-full bg-amber-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-800"
+        className="mt-4 rounded-full bg-brand-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-800"
       >
         {justAdded ? "Added ✓" : "Add to order"}
       </button>

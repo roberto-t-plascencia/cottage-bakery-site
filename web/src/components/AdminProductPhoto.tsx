@@ -91,7 +91,7 @@ export function AdminProductPhoto({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={working}
-          className="px-2 py-3 font-medium text-amber-800 hover:underline disabled:opacity-50 dark:text-amber-400"
+          className="px-2 py-3 font-medium text-brand-800 hover:underline disabled:opacity-50 dark:text-brand-400"
         >
           {working ? "Saving…" : imageUrl ? "Change" : "Add photo"}
         </button>

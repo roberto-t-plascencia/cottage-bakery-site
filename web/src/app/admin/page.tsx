@@ -133,7 +133,7 @@ function TabLink({
       aria-current={isActive ? "page" : undefined}
       className={
         isActive
-          ? "-mb-px border-b-2 border-amber-700 px-4 py-2 font-medium dark:border-amber-500"
+          ? "-mb-px border-b-2 border-brand-700 px-4 py-2 font-medium dark:border-brand-500"
           : "-mb-px border-b-2 border-transparent px-4 py-2 text-black/60 hover:text-black dark:text-white/60 dark:hover:text-white"
       }
     >
@@ -170,7 +170,7 @@ function OrdersSection({
               aria-current={isActive ? "page" : undefined}
               className={
                 isActive
-                  ? "rounded-full bg-amber-700 px-4 py-1.5 text-sm font-medium text-white"
+                  ? "rounded-full bg-brand-700 px-4 py-1.5 text-sm font-medium text-white"
                   : needsAttention
                     ? "rounded-full border border-red-700/40 px-4 py-1.5 text-sm font-medium text-red-700 hover:bg-red-700/10 dark:border-red-400/40 dark:text-red-400"
                     : "rounded-full border border-black/20 px-4 py-1.5 text-sm hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
@@ -325,7 +325,7 @@ function CatalogSection({
           <h2 className="text-lg font-semibold">Menu items</h2>
           <Link
             href="/admin/products/new"
-            className="rounded-full bg-amber-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-amber-800"
+            className="rounded-full bg-brand-700 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-800"
           >
             Add product
           </Link>
@@ -361,7 +361,7 @@ function CatalogSection({
                 <Link
                   href={`/admin/products/${product.id}/edit`}
                   aria-label={`Edit ${product.name}`}
-                  className="-mr-2 px-2 py-3 text-xs font-medium text-amber-800 hover:underline dark:text-amber-400"
+                  className="-mr-2 px-2 py-3 text-xs font-medium text-brand-800 hover:underline dark:text-brand-400"
                 >
                   Edit
                 </Link>

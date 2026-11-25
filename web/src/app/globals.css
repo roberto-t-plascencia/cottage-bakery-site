@@ -8,6 +8,20 @@
   --foreground: #171717;
 }
 
+/* Brand palette, sampled from the Violeta's Baked Goods logo: deep
+   purple lettering (#361252), lavender petals (#AD96E8) and dark green
+   leaves (#224C26). `brand-*` replaces the old amber accents; `leaf-*`
+   is the small green accent. */
+@theme {
+  --color-brand-100: #efe9fb;
+  --color-brand-400: #b099e9;
+  --color-brand-500: #9a80df;
+  --color-brand-700: #4e2075;
+  --color-brand-800: #361252;
+  --color-leaf-600: #3b7a43;
+  --color-leaf-700: #224c26;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

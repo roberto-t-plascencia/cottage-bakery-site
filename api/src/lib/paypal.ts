@@ -1,3 +1,4 @@
+import { bakeryConfig } from "./config";
 import { getEnv } from "./env";
 
 /**
@@ -103,7 +104,7 @@ export async function createPayPalOrder(amountCents: number, orderId: string): P
       // (ADD_SHIPPING_ERROR) before the payment ever reaches us.
       application_context: {
         shipping_preference: "NO_SHIPPING",
-        brand_name: "Mission Valley Home Bakers",
+        brand_name: bakeryConfig.businessName,
       },
     }),
   });
