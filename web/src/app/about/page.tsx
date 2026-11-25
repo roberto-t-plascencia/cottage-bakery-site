@@ -8,31 +8,39 @@ export default function AboutPage() {
       <h1 className="text-3xl font-bold tracking-tight">About</h1>
       <div className="prose prose-neutral mt-6 dark:prose-invert">
         <p>
-          {bakeryConfig.businessName} began decades before the first brick
-          was laid or the first hole was dug. Long before opening our doors,
-          Roberto Sr. and his wife, Violeta, were already building something
-          special in their kitchen.
+          <strong>
+            {bakeryConfig.businessName} is named for the heart of our kitchen:
+            Violeta.
+          </strong>
         </p>
         <p>
-          What began as a shared passion for baking soon became a lifelong
-          commitment to learning, experimenting, and perfecting an ancient
-          craft. Through countless recipes, adjustments, and late nights spent
-          baking, we developed our own approach—one rooted in patience,
-          quality ingredients, and a genuine love for what we do.
+          Long before there was a menu or a website, Violeta was baking. For
+          decades she and her husband, Roberto Sr., worked side by side in
+          their kitchen, trying recipes, adjusting them, and trying them again
+          until they were just right. Some became family favorites; every one
+          of them taught her something.
         </p>
         <p>
-          As our skills and passion grew, so did our dream. We realized that
-          baking was more than a hobby; it was a way to bring people together
-          and create something meaningful. Eventually, we decided to turn our
-          passion into a way of life and establish a baking business built on
-          tradition, hard work, and homemade flavor.
+          Violeta&rsquo;s way of baking is simple: be patient, use good
+          ingredients, and never rush the dough. You can taste it in our
+          naturally leavened masa madre breads, which take a full day to
+          ferment, and in every batch that comes out of her oven.
         </p>
         <p>
-          That dream became {bakeryConfig.businessName}—a family-inspired
-          business dedicated to sharing carefully crafted baked goods with our
-          community. Every item we make carries a piece of our journey: the
-          years of practice, the lessons learned, and the love that first
-          brought us into the kitchen.
+          As friends and family kept asking for &ldquo;Violeta&rsquo;s
+          bread,&rdquo; our skills and passion grew, and so did our dream. We
+          realized that baking was more than a hobby; it was a way to bring
+          people together and create something meaningful. Eventually, we
+          decided to turn our passion into a way of life and establish a
+          baking business built on tradition, hard work, and homemade flavor.
+        </p>
+        <p>
+          That dream became {bakeryConfig.businessName}&mdash;a
+          family-inspired business built on her recipes and dedicated to
+          sharing carefully crafted baked goods with our community. Every item
+          we make carries a piece of our journey: the years of practice, the
+          lessons learned, and the love that first brought Violeta into the
+          kitchen. And the violet in our logo? That one is for her.
         </p>
         <p>
           {bakeryConfig.businessName} is a licensed Class A Cottage Food
