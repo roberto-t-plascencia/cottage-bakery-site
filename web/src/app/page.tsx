@@ -6,17 +6,18 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-16">
       <section className="text-center">
-        <Image
-          src="/logo-seal.svg"
-          alt=""
-          width={176}
-          height={176}
-          priority
-          unoptimized
-          className="mx-auto mb-8"
-        />
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          {bakeryConfig.businessName}
+        {/* The stacked logo already spells out the name, so it IS the page
+            heading; its alt text is the accessible (and SEO) heading text. */}
+        <h1>
+          <Image
+            src="/logo-stacked.svg"
+            alt={bakeryConfig.businessName}
+            width={320}
+            height={229}
+            priority
+            unoptimized
+            className="mx-auto h-auto w-64 sm:w-80"
+          />
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-lg text-black/70 dark:text-white/70">
           {bakeryConfig.tagline}

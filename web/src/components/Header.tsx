@@ -69,8 +69,8 @@ export function Header() {
             className="flex items-center gap-3 text-base font-semibold leading-tight tracking-tight sm:text-lg"
           >
             {/* Decorative: the business name right beside it is the link's accessible name. */}
-            <Image src="/logo-mark.svg" alt="" width={36} height={36} priority unoptimized className="shrink-0" />
-            {bakeryConfig.businessName}
+            <Image src="/logo-flower.svg" alt="" width={36} height={36} priority unoptimized className="shrink-0" />
+            <span className="text-brand-800 dark:text-brand-100">{bakeryConfig.businessName}</span>
           </Link>
           <OrderLink className="sm:hidden" />
         </div>
